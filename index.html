@@ -1,0 +1,782 @@
+<title>BBC Annual Report Portal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: slim top bar, then either a centered code-entry panel, a sticky-index form with long sections, or a director roster table. */
+:root{
+  --bg:#F3F4F8; --surface:#FFFFFF; --soft:#EBEDF4; --ink:#171C28; --muted:#586177; --line:#D8DCE6;
+  --accent:#B01E23; --accent-ink:#FFFFFF; --accent-soft:#F8E4E4;
+  --ok:#1B7647; --ok-soft:#DDF0E5; --warn:#8F5A00; --warn-soft:#F8EBCF;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1219; --surface:#171B25; --soft:#1F2430; --ink:#E8EBF2; --muted:#9AA3B6; --line:#2B3141;
+  --accent:#EF5A5F; --accent-ink:#1A0809; --accent-soft:#3A1A1D;
+  --ok:#52C98F; --ok-soft:#173326; --warn:#E5AE3A; --warn-soft:#3A2D10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1219; --surface:#171B25; --soft:#1F2430; --ink:#E8EBF2; --muted:#9AA3B6; --line:#2B3141;
+  --accent:#EF5A5F; --accent-ink:#1A0809; --accent-soft:#3A1A1D;
+  --ok:#52C98F; --ok-soft:#173326; --warn:#E5AE3A; --warn-soft:#3A2D10; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-block:0 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.wrap{max-width:1100px;margin-inline:auto}
+
+.topbar{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px;padding-block:18px 14px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--f-display);font-weight:700;font-size:18px}
+.brand b{color:var(--accent)}
+.cycle{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.topbar .sp{flex:1}
+
+button{cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:500;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.link{border:0;background:none;color:var(--accent);padding:4px 2px;font-weight:600}
+.btn[disabled]{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* entry */
+.entry{max-width:520px;margin:9vh auto 0}
+.entry h1{font-size:clamp(28px,6vw,40px);line-height:1.08;margin-bottom:12px}
+.entry p{color:var(--muted);margin:0 0 22px}
+.codebox{width:100%;font-family:var(--f-mono);font-size:26px;letter-spacing:.14em;text-transform:uppercase;text-align:center;
+  padding:14px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface)}
+.codebox:focus{border-color:var(--accent);outline:none}
+.rolepick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.rolepick .btn{padding:14px;font-size:15px}
+.err{color:var(--accent);margin-top:12px;font-size:14px;min-height:20px}
+.dirlink{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:14px}
+
+/* record */
+.rec-head{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:flex-end;padding-block:26px 18px}
+.rec-head h1{font-size:clamp(26px,5vw,36px);line-height:1.1}
+.rec-head .meta{color:var(--muted);font-size:14px}
+.rec-head .grow{flex:1;min-width:240px}
+.chip{font-family:var(--f-mono);font-size:13px;letter-spacing:.08em;background:var(--soft);padding:3px 8px;border-radius:6px}
+.save{font-size:13px;color:var(--muted);min-height:20px}
+.save.error{color:var(--accent)}
+.layout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px;align-items:start}
+.index{position:sticky;top:12px;display:flex;flex-direction:column;gap:2px}
+.index button{display:flex;justify-content:space-between;gap:8px;text-align:left;border:0;background:none;padding:7px 10px;border-radius:7px;color:var(--muted);font-size:14px}
+.index button:hover{background:var(--soft);color:var(--ink)}
+.index .cnt{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:12px}
+.index .cnt.done{color:var(--ok)}
+.sec{display:grid;grid-template-columns:44px minmax(0,1fr);gap:0 14px;padding-block:26px;border-top:1px solid var(--line)}
+.sec:first-child{border-top:0;padding-top:4px}
+.num{font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1;color:var(--accent)}
+.sec h2{font-size:21px;margin-bottom:4px}
+.sec .blurb{color:var(--muted);font-size:14px;margin:0 0 16px}
+.fields{display:flex;flex-direction:column;gap:18px}
+.field label,.field .lbl{display:block;font-weight:600;font-size:14px;margin-bottom:2px}
+.field .hint{color:var(--muted);font-size:13px;margin-bottom:6px}
+.inp{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 11px;min-width:0}
+.inp:focus{border-color:var(--accent);outline:none}
+textarea.inp{resize:vertical;min-height:92px;line-height:1.5;max-width:68ch;display:block}
+.inp[readonly],.inp:disabled{background:var(--soft)}
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;gap:8px;align-items:end}
+.row .cell{min-width:0}
+.row .cell span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
+.ro-val{white-space:pre-wrap;max-width:68ch;padding:9px 11px;background:var(--soft);border-radius:8px;min-height:38px}
+.ro-val.empty{color:var(--muted);font-style:italic}
+.ro-list{display:flex;flex-direction:column;gap:4px}
+.ro-list div{padding:7px 11px;background:var(--soft);border-radius:8px}
+.ro-list em{font-style:normal;color:var(--muted);font-size:13px;margin-left:6px}
+.studentro{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-bottom:26px}
+.studentro>summary{cursor:pointer;padding:14px 18px;font-family:var(--f-display);font-weight:700;font-size:18px}
+.studentro .inner{padding:0 18px 8px}
+.studentro .sec{grid-template-columns:34px minmax(0,1fr)}
+.studentro .num{font-size:26px}
+.studentro .sec h2{font-size:17px}
+
+.rating{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:flex-start}
+.rbtns{display:grid;grid-template-columns:repeat(4,56px);gap:6px}
+.rate{height:46px;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-family:var(--f-display);font-weight:700;font-size:20px}
+.rate:hover{border-color:var(--muted)}
+.rate[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rcap{grid-column:1/-1;display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:12px}
+.cat{align-self:center;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--soft);color:var(--muted)}
+.cat[data-c="t"]{background:var(--ok-soft);color:var(--ok)}
+.cat[data-c="a"]{background:var(--warn-soft);color:var(--warn)}
+.cat[data-c="n"]{background:var(--accent-soft);color:var(--accent)}
+
+.submitbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-top:10px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.submitbar p{margin:0;flex:1;min-width:220px;color:var(--muted);font-size:14px}
+.notice{padding:10px 14px;border-radius:8px;background:var(--warn-soft);color:var(--warn);margin-bottom:16px;font-size:14px}
+
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.pill[data-s="done"]{background:var(--ok-soft);color:var(--ok)}
+.pill[data-s="prog"]{background:var(--warn-soft);color:var(--warn)}
+
+/* director */
+.dir h1{font-size:clamp(26px,5vw,36px);padding-block:26px 6px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;margin-top:18px}
+.panel h2{font-size:19px;margin-bottom:4px}
+.panel .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.dates{display:flex;gap:12px;flex-wrap:wrap}
+.dates label{font-size:13px;color:var(--muted)}
+.dates input{display:block;margin-top:2px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.code{font-family:var(--f-mono);letter-spacing:.06em;white-space:nowrap}
+td .inp{width:64px;padding:5px 7px}
+.acts{display:flex;gap:4px;white-space:nowrap}
+.narr{border-top:1px solid var(--line);padding-block:14px}
+.narr:first-of-type{border-top:0}
+.narr .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.narr h3{font-size:16px}
+.narr p{margin:0;max-width:78ch;white-space:pre-wrap}
+.empty-state{padding:26px 8px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;z-index:20}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .index{display:none}
+  .twocol{grid-template-columns:minmax(0,1fr)}
+  .sec{grid-template-columns:minmax(0,1fr)}
+  .num{font-size:26px;margin-bottom:4px}
+  .row{grid-template-columns:minmax(0,1fr)!important}
+  .studentro .sec{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="brand">BBC <b>Annual Report</b></span>
+    <span class="cycle" id="cycleLabel">PhD Program in Psychology · Brain, Behavior &amp; Cognition</span>
+    <span class="sp"></span>
+    <span class="cycle" id="whoLabel"></span>
+  </div>
+  <main id="main"></main>
+</div>
+<div id="toastHost"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- helpers ---------- */
+function h(tag, attrs){
+  var e = document.createElement(tag);
+  var a = attrs || {};
+  Object.keys(a).forEach(function(k){
+    var v = a[k];
+    if (v == null || v === false) return;
+    if (k === "class") e.className = v;
+    else if (k.slice(0,2) === "on") e.addEventListener(k.slice(2), v);
+    else if (k === "text") e.textContent = v;
+    else if (k === "style") e.setAttribute("style", v);
+    else if (k in e) { try { e[k] = v; } catch(_) { e.setAttribute(k, v); } }
+    else e.setAttribute(k, v);
+  });
+  for (var i = 2; i < arguments.length; i++) add(e, arguments[i]);
+  return e;
+}
+function add(e, c){
+  if (c == null || c === false) return;
+  if (Array.isArray(c)) { c.forEach(function(x){ add(e, x); }); return; }
+  e.append(c.nodeType ? c : document.createTextNode(String(c)));
+}
+function toast(msg){
+  var t = h("div", {class:"toast", text:msg});
+  document.getElementById("toastHost").append(t);
+  setTimeout(function(){ t.remove(); }, 1800);
+}
+function copy(text, label){
+  function fallback(){
+    var ta = h("textarea", {value:text, style:"position:fixed;opacity:0"});
+    document.body.append(ta); ta.select();
+    try { document.execCommand("copy"); toast(label || "Copied"); } catch(_) { toast("Select and copy manually"); }
+    ta.remove();
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ toast(label || "Copied"); }, fallback);
+  } else fallback();
+}
+function isFilled(v){
+  if (Array.isArray(v)) return v.some(function(r){ return Object.keys(r).some(function(k){ return String(r[k] || "").trim() && k !== "_"; }); });
+  return v != null && String(v).trim() !== "";
+}
+function hasContent(o){ return !!o && Object.keys(o).some(function(k){ return isFilled(o[k]); }); }
+function fmtDate(iso){ if(!iso) return "—"; var p = iso.split("-"); return p.length === 3 ? p[1]+"/"+p[2]+"/"+p[0] : iso; }
+var ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function newCode(){
+  var b = new Uint8Array(8); crypto.getRandomValues(b);
+  var s = ""; for (var i = 0; i < 8; i++) s += ALPHA[b[i] % ALPHA.length];
+  return s.slice(0,4) + "-" + s.slice(4);
+}
+function normCode(s){
+  var c = String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return c.length === 8 ? c.slice(0,4) + "-" + c.slice(4) : c;
+}
+
+/* ---------- form definitions ---------- */
+var STUDENT = [
+  {id:"g1", n:1, title:"Mastery of existing theory and research", blurb:"What you learned and which milestones you reached this cycle.", fields:[
+    {k:"g1_stage", type:"line", label:"Current stage and milestones completed", hint:"For example coursework, qualifying project, proposal, candidacy or defense."},
+    {k:"g1_summary", type:"long", label:"How did you build your command of the literature?", hint:"Courses, readings, reading groups, exams and committee meetings."}]},
+  {id:"g2", n:2, title:"Independent, ethical research", blurb:"Your research output and your own contributions to it.", fields:[
+    {k:"g2_pubs", type:"list", label:"Publications and manuscripts", add:"Add publication", cols:[
+      {k:"cite", label:"Citation or working title", w:"3fr"},
+      {k:"status", label:"Status", type:"select", opts:["In preparation","Submitted","In revision","Accepted","Published"], w:"1fr"}]},
+    {k:"g2_talks", type:"list", label:"Talks and posters", add:"Add presentation", cols:[
+      {k:"cite", label:"Title, venue and date", w:"3fr"},
+      {k:"status", label:"Type", type:"select", opts:["Poster","Talk","Invited talk"], w:"1fr"}]},
+    {k:"g2_funding", type:"long", label:"Fellowships, grants and awards", hint:"Applied for or received this cycle."},
+    {k:"g2_summary", type:"long", label:"Research progress and your independent contributions"}]},
+  {id:"g3", n:3, title:"Professional and ethical scholarly activity", blurb:"How you conducted yourself as a scholar.", fields:[
+    {k:"g3_ethics", type:"long", label:"Ethics and responsible conduct of research training"},
+    {k:"g3_service", type:"long", label:"Service, mentoring and community contributions", hint:"Lab, program, department, university and field."}]},
+  {id:"g4", n:4, title:"Teaching", blurb:"Leave this blank if you did not teach this cycle.", fields:[
+    {k:"g4_courses", type:"list", label:"Courses taught", add:"Add course", cols:[
+      {k:"term", label:"Term", type:"select", opts:["Fall","Spring","Summer"], w:"1fr"},
+      {k:"cite", label:"Course", w:"2fr"},
+      {k:"status", label:"Role", type:"select", opts:["Teaching fellow","Teaching assistant","Grader","Guest lecturer","Instructor of record"], w:"1.4fr"}]},
+    {k:"g4_reflection", type:"long", label:"Teaching experience and how you developed as a teacher"}]},
+  {id:"plan", title:"Looking ahead", blurb:"Shared with your advisor and the program director.", fields:[
+    {k:"plan_goals", type:"long", label:"Goals for the next cycle"},
+    {k:"plan_support", type:"long", label:"Support you need from your advisor or the program"}]}
+];
+var RATED = [
+  {n:1, id:"g1", title:"Mastery of existing theory and research"},
+  {n:2, id:"g2", title:"Independent, ethical research"},
+  {n:3, id:"g3", title:"Professional and ethical scholarly activity"}
+];
+function ratingCat(r){ return r >= 3 ? "t" : r >= 2 ? "a" : "n"; }
+var CAT_NAME = {t:"Target", a:"Acceptable", n:"Needs improvement"};
+
+/* ---------- state ---------- */
+var db = null, userCap = null, dl = null;
+var isDirector = false, canWrite = true;
+var cycle = {start:"2025-11-16", end:"2026-11-15"};
+var cleanups = [];
+function clearViews(){ cleanups.forEach(function(f){ try { f(); } catch(_){} }); cleanups = []; }
+var main = document.getElementById("main");
+function show(el){ main.replaceChildren(el); window.scrollTo(0,0); }
+
+/* ---------- autosave ---------- */
+function makeSaver(ref, onState){
+  var pend = {}, timer = null, busy = false;
+  function queue(part, key, val){
+    if (!pend[part]) pend[part] = {};
+    pend[part][key] = val;
+    onState("dirty");
+    clearTimeout(timer); timer = setTimeout(flush, 700);
+  }
+  async function flush(){
+    clearTimeout(timer);
+    if (busy) return;
+    busy = true;
+    try {
+      while (Object.keys(pend).length) {
+        var p = pend; pend = {};
+        try {
+          var body = Object.assign({}, p, {updatedAt:new Date().toISOString()});
+          await ref.update(body);
+          onState("saved");
+        } catch(e) {
+          Object.keys(p).forEach(function(part){ pend[part] = Object.assign({}, p[part], pend[part] || {}); });
+          onState("error");
+          break;
+        }
+      }
+    } finally { busy = false; }
+  }
+  return {queue:queue, flush:flush};
+}
+
+/* ---------- field editors ---------- */
+function autosize(t){ t.style.height = "auto"; t.style.height = Math.max(92, t.scrollHeight + 2) + "px"; }
+
+function fieldEl(f, value, onChange, ro){
+  var box = h("div", {class:"field"});
+  var id = "f_" + f.k;
+  if (f.type === "list") box.append(h("span", {class:"lbl", text:f.label}));
+  else box.append(h("label", {for:id, text:f.label}));
+  if (f.hint) box.append(h("div", {class:"hint", text:f.hint}));
+
+  if (ro) {
+    if (f.type === "list") {
+      var rows = (value || []).filter(function(r){ return isFilled([r]); });
+      box.append(rows.length
+        ? h("div", {class:"ro-list"}, rows.map(function(r){
+            var parts = f.cols.map(function(c){ return r[c.k]; }).filter(Boolean);
+            var lead = (f.cols[0].k === "term" ? parts.slice(0,2).join(" · ") : parts[0] || "");
+            var rest = (f.cols[0].k === "term" ? parts.slice(2) : parts.slice(1)).join(" · ");
+            return h("div", null, lead, rest ? h("em", {text:rest}) : null);
+          }))
+        : h("div", {class:"ro-val empty", text:"Nothing entered"}));
+    } else {
+      var has = isFilled(value);
+      box.append(h("div", {class:"ro-val" + (has ? "" : " empty"), text:has ? value : "Nothing entered"}));
+    }
+    return box;
+  }
+
+  if (f.type === "line") {
+    box.append(h("input", {class:"inp", id:id, type:"text", value:value || "", disabled:!canWrite,
+      oninput:function(e){ onChange(e.target.value); }}));
+  } else if (f.type === "long") {
+    var ta = h("textarea", {class:"inp", id:id, value:value || "", disabled:!canWrite,
+      oninput:function(e){ autosize(e.target); onChange(e.target.value); }});
+    box.append(ta);
+    setTimeout(function(){ autosize(ta); }, 0);
+  } else if (f.type === "list") {
+    var rowsData = (value && value.length) ? value.map(function(r){ return Object.assign({}, r); }) : [];
+    var host = h("div", {class:"rows"});
+    var tpl = f.cols.map(function(c){ return c.w; }).join(" ") + " 34px";
+    function commit(){ onChange(rowsData.map(function(r){ var o = Object.assign({}, r); return o; })); }
+    function draw(){
+      host.replaceChildren();
+      rowsData.forEach(function(r, i){
+        var row = h("div", {class:"row", style:"grid-template-columns:" + tpl});
+        f.cols.forEach(function(c){
+          var ctl;
+          if (c.type === "select") {
+            ctl = h("select", {class:"inp", disabled:!canWrite, onchange:function(e){ r[c.k] = e.target.value; commit(); }},
+              [h("option", {value:"", text:"Choose…"})].concat(c.opts.map(function(o){ return h("option", {value:o, text:o, selected:r[c.k] === o}); })));
+          } else {
+            ctl = h("input", {class:"inp", type:"text", value:r[c.k] || "", disabled:!canWrite, oninput:function(e){ r[c.k] = e.target.value; commit(); }});
+          }
+          row.append(h("div", {class:"cell"}, h("span", {text:c.label}), ctl));
+        });
+        row.append(h("button", {class:"btn sm", type:"button", title:"Remove row", "aria-label":"Remove row", text:"✕", disabled:!canWrite,
+          onclick:function(){ rowsData.splice(i,1); commit(); draw(); }}));
+        host.append(row);
+      });
+    }
+    draw();
+    box.append(host);
+    box.append(h("div", {style:"margin-top:8px"}, h("button", {class:"btn sm", type:"button", text:"+ " + f.add, disabled:!canWrite,
+      onclick:function(){ rowsData.push({}); commit(); draw(); var first = host.querySelector(".row:last-child input,.row:last-child select"); if (first) first.focus(); }})));
+  }
+  return box;
+}
+
+function sectionEl(sec, data, onChange, ro, onInput){
+  var wrap = h("section", {class:"sec", id:"sec_" + (ro ? "ro_" : "") + sec.id});
+  wrap.append(h("div", {class:"num", text:sec.n || ""}));
+  var body = h("div", null, h("h2", {text:sec.title}));
+  if (sec.blurb) body.append(h("p", {class:"blurb", text:sec.blurb}));
+  var fields = h("div", {class:"fields"});
+  sec.fields.forEach(function(f){
+    fields.append(fieldEl(f, data[f.k], function(v){ onChange(f.k, v); if (onInput) onInput(); }, ro));
+  });
+  body.append(fields);
+  wrap.append(body);
+  return wrap;
+}
+
+function ratingEl(value, onChange, ro){
+  var cur = typeof value === "number" ? value : null;
+  var wrap = h("div", {class:"rating", role:"group"});
+  var cat = h("span", {class:"cat"});
+  function paint(){
+    btns.forEach(function(b, i){ b.setAttribute("aria-pressed", String(cur === i + 1)); });
+    if (cur) { cat.dataset.c = ratingCat(cur); cat.textContent = CAT_NAME[ratingCat(cur)]; }
+    else { delete cat.dataset.c; cat.textContent = "Not rated"; }
+  }
+  var btns = [1,2,3,4].map(function(n){
+    return h("button", {type:"button", class:"rate", text:String(n), disabled:ro || !canWrite, "aria-label":"Rating " + n,
+      onclick:function(){ cur = (cur === n) ? null : n; paint(); onChange(cur); }});
+  });
+  var grid = h("div", {class:"rbtns"}, btns,
+    h("div", {class:"rcap"}, h("span", {text:"Developing skill"}), h("span", {text:"Independent researcher"})));
+  wrap.append(grid, cat);
+  paint();
+  return wrap;
+}
+
+/* ---------- record view ---------- */
+async function openRecord(code, role, fromDirector){
+  clearViews();
+  var ref = db.doc("students/" + code);
+  var first = await ref.get();
+  if (!first.exists) return false;
+
+  var built = false;
+  var doc = first.data();
+  var saveEl = h("div", {class:"save"});
+  var saver = makeSaver(ref, function(s){
+    saveEl.className = "save" + (s === "error" ? " error" : "");
+    if (s === "dirty") saveEl.textContent = "Saving…";
+    else if (s === "saved") saveEl.textContent = "Saved " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+    else { saveEl.textContent = ""; saveEl.append("Could not save. ", h("button", {class:"btn link", type:"button", text:"Retry", onclick:function(){ saver.flush(); }})); }
+  });
+  var part = role === "student" ? "student" : "advisorPart";
+  var statusKey = role === "student" ? "studentAt" : "advisorAt";
+
+  var headMeta = h("div", {class:"meta"});
+  var roBox = h("div");
+  var editorBox = h("div");
+  var submitBar = h("div", {class:"submitbar"});
+  var indexBox = h("nav", {class:"index", "aria-label":"Sections"});
+
+  function paintHead(d){
+    headMeta.replaceChildren(
+      "Advisor: " + (d.advisor || "—") + (d.year ? " · " + d.year : "") + " · Cycle " + fmtDate(cycle.start) + " – " + fmtDate(cycle.end));
+  }
+  function paintSubmit(d){
+    var at = (d.status || {})[statusKey];
+    submitBar.replaceChildren();
+    if (!canWrite) { submitBar.append(h("p", {text:"You have view-only access, so changes cannot be saved."})); return; }
+    if (at) {
+      submitBar.append(
+        h("p", {text:"Submitted " + new Date(at).toLocaleDateString() + ". You can keep editing; changes save automatically."}),
+        h("button", {class:"btn", type:"button", text:"Mark as not submitted", onclick:async function(){
+          await saver.flush(); await ref.update({status:{[statusKey]:""}}); }}));
+    } else {
+      submitBar.append(
+        h("p", {text: role === "student"
+          ? "Your answers save automatically. Submit when you are done so your advisor and the director know it is ready."
+          : "Your ratings save automatically. Submit when your review is complete."}),
+        h("button", {class:"btn primary", type:"button", text: role === "student" ? "Submit my report" : "Submit review", onclick:async function(){
+          await saver.flush(); await ref.update({status:{[statusKey]:new Date().toISOString()}}); toast("Submitted"); }}));
+    }
+  }
+  function paintRO(d){
+    if (role !== "advisor") return;
+    roBox.replaceChildren();
+    var st = d.student || {};
+    var submitted = (d.status || {}).studentAt;
+    var det = h("details", {class:"studentro", open:true},
+      h("summary", {text:"Student responses" + (submitted ? "" : " (not yet submitted)")}),
+      h("div", {class:"inner"}, STUDENT.map(function(s){ return sectionEl(s, st, function(){}, true); })));
+    roBox.append(det);
+  }
+
+  function buildEditor(d){
+    editorBox.replaceChildren();
+    indexBox.replaceChildren();
+    var data = Object.assign({}, d[part] || {});
+    function jump(id){ var el = document.getElementById(id); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    if (role === "student") {
+      var counters = {};
+      STUDENT.forEach(function(s){
+        var cnt = h("span", {class:"cnt"});
+        counters[s.id] = {el:cnt, s:s};
+        indexBox.append(h("button", {type:"button", onclick:function(){ jump("sec_" + s.id); }}, h("span", {text:(s.n ? s.n + ". " : "") + s.title.split(" ").slice(0,3).join(" ")}), cnt));
+        editorBox.append(sectionEl(s, data, function(k, v){ data[k] = v; saver.queue(part, k, v); }, false, refreshCounts));
+      });
+      function refreshCounts(){
+        Object.keys(counters).forEach(function(id){
+          var c = counters[id], tot = c.s.fields.length, n = c.s.fields.filter(function(f){ return isFilled(data[f.k]); }).length;
+          c.el.textContent = n + "/" + tot; c.el.className = "cnt" + (n === tot ? " done" : "");
+        });
+      }
+      refreshCounts();
+    } else {
+      var items = RATED.map(function(g){
+        return {id:"adv_" + g.id, label:g.n + ". " + g.title.split(" ").slice(0,3).join(" "), g:g};
+      });
+      items.forEach(function(it){
+        var g = it.g;
+        indexBox.append(h("button", {type:"button", onclick:function(){ jump(it.id); }}, h("span", {text:it.label})));
+        var sec = h("section", {class:"sec", id:it.id}, h("div", {class:"num", text:g.n}),
+          h("div", null,
+            h("h2", {text:g.title}),
+            h("p", {class:"blurb", text:"Rate from 1 (developing skill) to 4 (independent researcher). A mean of 3–4 is Target, 2 is Acceptable and 1 is Needs improvement."}),
+            h("div", {class:"fields"},
+              h("div", {class:"field"}, h("span", {class:"lbl", text:"Your rating"}),
+                ratingEl(data["r" + g.n], function(v){ data["r" + g.n] = v; saver.queue(part, "r" + g.n, v); }, false)),
+              fieldEl({k:"c" + g.n, type:"long", label:"Comments", hint:"Briefly note the evidence behind the rating."}, data["c" + g.n],
+                function(v){ data["c" + g.n] = v; saver.queue(part, "c" + g.n, v); }, false))));
+        editorBox.append(sec);
+      });
+      indexBox.append(h("button", {type:"button", onclick:function(){ jump("adv_g4"); }}, h("span", {text:"4. Teaching"})));
+      editorBox.append(h("section", {class:"sec", id:"adv_g4"}, h("div", {class:"num", text:4}),
+        h("div", null, h("h2", {text:"Teaching"}),
+          h("p", {class:"blurb", text:"Optional. The program director scores teaching from course evaluations, so no rating is needed here."}),
+          h("div", {class:"fields"}, fieldEl({k:"c4", type:"long", label:"Comments on teaching"}, data.c4, function(v){ data.c4 = v; saver.queue(part, "c4", v); }, false)))));
+      indexBox.append(h("button", {type:"button", onclick:function(){ jump("adv_all"); }}, h("span", {text:"Overall"})));
+      editorBox.append(h("section", {class:"sec", id:"adv_all"}, h("div", {class:"num", text:""}),
+        h("div", null, h("h2", {text:"Overall"}),
+          h("div", {class:"fields", style:"margin-top:14px"},
+            fieldEl({k:"c_overall", type:"long", label:"Overall assessment and recommended next steps"}, data.c_overall, function(v){ data.c_overall = v; saver.queue(part, "c_overall", v); }, false),
+            (function(){
+              var f = h("div", {class:"field"}, h("label", {for:"f_met", text:"Have you discussed this review with the student?"}));
+              f.append(h("select", {class:"inp", id:"f_met", style:"max-width:240px", disabled:!canWrite,
+                onchange:function(e){ data.met = e.target.value; saver.queue(part, "met", e.target.value); }},
+                ["", "Yes", "Not yet"].map(function(o){ return h("option", {value:o, text:o || "Choose…", selected:(data.met || "") === o}); })));
+              return f;
+            })()))));
+    }
+  }
+
+  var back = fromDirector
+    ? h("button", {class:"btn link", type:"button", text:"← Roster", onclick:function(){ goDirector(); }})
+    : h("button", {class:"btn link", type:"button", text:"← Use a different code", onclick:function(){ goEntry(); }});
+
+  var head = h("div", {class:"rec-head"},
+    h("div", {class:"grow"},
+      h("div", null, back),
+      h("h1", {text:doc.name || "Student"}),
+      headMeta),
+    h("div", null,
+      h("div", {style:"display:flex;gap:8px;align-items:center;justify-content:flex-end"},
+        h("span", {class:"pill", "data-s":"prog", text:role === "student" ? "Student section" : "Advisor section"}),
+        h("span", {class:"chip", text:code})),
+      saveEl));
+
+  var page = h("div", null, head,
+    !canWrite ? h("div", {class:"notice", text:"This page is read-only for you. Ask the program director to share it with contributor access."}) : null,
+    h("div", {class:"layout"}, indexBox, h("div", null, roBox, editorBox, submitBar)));
+  show(page);
+  document.getElementById("whoLabel").textContent = (role === "student" ? "Student" : "Advisor") + " view";
+
+  function apply(d){
+    doc = d;
+    paintHead(d); paintSubmit(d);
+    if (!built) { built = true; paintRO(d); buildEditor(d); }
+    else paintRO(d);
+  }
+  apply(doc);
+  var unsub = ref.onSnapshot(function(snap){ if (snap.exists) apply(snap.data()); }, function(){});
+  cleanups.push(unsub);
+  return true;
+}
+
+/* ---------- entry ---------- */
+function goEntry(){
+  clearViews();
+  document.getElementById("whoLabel").textContent = "";
+  var input = h("input", {class:"codebox", id:"codeIn", type:"text", placeholder:"XXXX-XXXX", autocomplete:"off", spellcheck:false, maxLength:12, "aria-label":"Access code"});
+  try { var last = localStorage.getItem("bbc_last_code"); if (last) input.value = last; } catch(_){}
+  var err = h("div", {class:"err", role:"alert"});
+  async function go(role){
+    var code = normCode(input.value);
+    err.textContent = "";
+    if (code.length !== 9) { err.textContent = "Codes have eight characters, like K7Q2-M9XD."; input.focus(); return; }
+    try {
+      var ok = await openRecord(code, role, false);
+      if (!ok) { err.textContent = "That code was not found. Check it with the director."; return; }
+      try { localStorage.setItem("bbc_last_code", code); } catch(_){}
+    } catch(e) { err.textContent = "Could not reach the form right now. Try again in a moment."; }
+  }
+  var form = h("form", {onsubmit:function(e){ e.preventDefault(); go("student"); }},
+    input,
+    h("div", {class:"rolepick"},
+      h("button", {class:"btn primary", type:"button", text:"Open as student", onclick:function(){ go("student"); }}),
+      h("button", {class:"btn", type:"button", text:"Open as advisor", onclick:function(){ go("advisor"); }})),
+    err);
+  var view = h("div", {class:"entry"},
+    h("h1", {text:"Annual report for BBC doctoral students"}),
+    h("p", {text:"Students complete their part first. Advisors use the same code to read it and add their ratings. Enter the code the program director sent you."}),
+    form,
+    isDirector ? h("div", {class:"dirlink"}, h("span", {text:"You are signed in as a director."}), h("button", {class:"btn", type:"button", text:"Open director dashboard", onclick:goDirector})) : null);
+  show(view);
+}
+
+/* ---------- director ---------- */
+function mean(a){ return a.length ? a.reduce(function(x,y){ return x + y; }, 0) / a.length : null; }
+function nums(a){ return a.filter(function(x){ return typeof x === "number" && !isNaN(x); }); }
+function pct(n, d){ return d ? Math.round(100 * n / d) : 0; }
+function studentStatus(d, part, key){
+  if ((d.status || {})[key]) return "done";
+  return hasContent(d[part]) ? "prog" : "none";
+}
+var PILL = {done:"Submitted", prog:"In progress", none:"Not started"};
+function studentMean(d){ var a = nums([1,2,3].map(function(i){ return (d.advisorPart || {})["r" + i]; })); return mean(a); }
+function f1(x){ return x == null ? "—" : (Math.round(x * 10) / 10).toFixed(1); }
+
+function goalNarrative(docs, g){
+  var rs = nums(docs.map(function(d){ return (d.advisorPart || {})["r" + g.n]; }));
+  var lead = "Goal #" + g.n + ". " + g.title + ": ";
+  if (!rs.length) return lead + "No faculty ratings have been entered yet.";
+  var t = rs.filter(function(r){ return r >= 3; }).length;
+  var a = rs.filter(function(r){ return r >= 2 && r < 3; }).length;
+  var n = rs.filter(function(r){ return r < 2; }).length;
+  var noun = g.n === 1 ? "Scholarship was" : "This goal was quantitatively";
+  return lead + noun + " assessed by faculty mentors on a scale from 1 (developing skill) – 4 (independent researcher). Scores were then used by the program director to place them into one of the following categories based on scores: Target (overall mean rating 3-4), Acceptable (overall mean rating 2), and Needs improvement (overall mean rating 1). BBC trainees scored, on average, a " +
+    f1(mean(rs)) + " on this measure (n = " + rs.length + " of " + docs.length + " students). " +
+    pct(t, rs.length) + "% of BBC students were on Target, " + pct(a, rs.length) + "% were Acceptable, and " + pct(n, rs.length) + "% Needed Improvement.";
+}
+function tfNarrative(docs){
+  var y = parseInt((cycle.start || "").slice(0,4), 10) || new Date().getFullYear();
+  var yy = function(v){ return String(v).slice(-2); };
+  function band(vals){
+    return {n:vals.length,
+      t:vals.filter(function(v){ return v >= 4; }).length,
+      a:vals.filter(function(v){ return v >= 3 && v < 4; }).length,
+      i:vals.filter(function(v){ return v >= 2 && v < 3; }).length,
+      u:vals.filter(function(v){ return v < 2; }).length};
+  }
+  var fall = band(nums(docs.map(function(d){ var v = parseFloat((d.director || {}).tfFall); return isNaN(v) ? null : v; })));
+  var spr = band(nums(docs.map(function(d){ var v = parseFloat((d.director || {}).tfSpring); return isNaN(v) ? null : v; })));
+  var lead = "Goal #4. Demonstrate Teaching Abilities: ";
+  if (!fall.n && !spr.n) return lead + "No teaching evaluation scores have been entered yet. Enter each teaching fellow's mean course-evaluation rating in the roster above.";
+  function sentence(label, b){
+    return "In the " + label + ", " + b.t + " TF" + (b.t === 1 ? "" : "s") + "' ratings were in the Target range (overall mean rating 4-5), " +
+      b.a + " in the Acceptable range (3-4), " + b.i + " in the Needs improvement range (2-3) and " + b.u + " in the Unacceptable range (below 2).";
+  }
+  return lead + "The performance of BBC students who were teaching fellows during AY " + yy(y) + "/" + yy(y + 1) +
+    " was assessed using criteria obtained from course evaluations on the question \"How much did you learn from this course?\" The rubric designed to evaluate their performance was then used by the program director to place them into one of the following categories based on the overall mean rating of their discussion sections: Target (overall mean rating 4-5), Acceptable (overall mean rating 3-4), Needs improvement (overall mean rating 2-3) and Unacceptable (overall mean rating below 2). " +
+    "There were " + fall.n + " students who were TFs evaluated in the Fall of " + yy(y) + " and " + spr.n + " students who were TFs evaluated in the Spring of " + yy(y + 1) + ". " +
+    sentence("fall", fall) + " " + sentence("spring", spr);
+}
+
+function csvEsc(v){ var s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function listText(arr){ return (arr || []).filter(function(r){ return isFilled([r]); }).map(function(r){ return [r.term, r.cite, r.status].filter(Boolean).join(" / "); }).join("; "); }
+function buildCsv(docs){
+  var cols = ["Code","Student","Advisor","Year","Student submitted","Advisor submitted",
+    "Rating G1","Rating G2","Rating G3","Mean rating","Comment G1","Comment G2","Comment G3","Comment teaching","Overall comment","Discussed with student",
+    "TF eval Fall","TF eval Spring",
+    "G1 stage","G1 summary","Publications","Talks and posters","Funding and awards","G2 summary","Ethics training","Service and mentoring","Courses taught","Teaching reflection","Goals next cycle","Support needed"];
+  var rows = [cols];
+  docs.forEach(function(d){
+    var s = d.student || {}, a = d.advisorPart || {}, st = d.status || {}, dr = d.director || {};
+    rows.push([d.id, d.name, d.advisor, d.year, st.studentAt, st.advisorAt,
+      a.r1, a.r2, a.r3, studentMean(d) == null ? "" : f1(studentMean(d)), a.c1, a.c2, a.c3, a.c4, a.c_overall, a.met,
+      dr.tfFall, dr.tfSpring,
+      s.g1_stage, s.g1_summary, listText(s.g2_pubs), listText(s.g2_talks), s.g2_funding, s.g2_summary, s.g3_ethics, s.g3_service, listText(s.g4_courses), s.g4_reflection, s.plan_goals, s.plan_support]);
+  });
+  return rows.map(function(r){ return r.map(csvEsc).join(","); }).join("\n");
+}
+
+function goDirector(){
+  clearViews();
+  document.getElementById("whoLabel").textContent = "Director";
+  var docs = [];
+  var confirmDel = null;
+  var rosterHost = h("div");
+  var narrHost = h("div");
+  var addMsg = h("div", {class:"hint", style:"color:var(--muted);font-size:13px;margin-top:6px"});
+
+  /* cycle */
+  var startIn = h("input", {class:"inp", id:"cycStart", type:"date", value:cycle.start, style:"width:auto"});
+  var endIn = h("input", {class:"inp", id:"cycEnd", type:"date", value:cycle.end, style:"width:auto"});
+  async function saveCycle(){
+    if (!startIn.value || !endIn.value) return;
+    try { await db.doc("config/cycle").set({start:startIn.value, end:endIn.value}); toast("Cycle saved"); } catch(_) { toast("Could not save the cycle"); }
+  }
+  startIn.addEventListener("change", saveCycle); endIn.addEventListener("change", saveCycle);
+
+  /* add students */
+  var bulk = h("textarea", {class:"inp", id:"bulkIn", rows:4, placeholder:"Jordan Rivera, Dr. Alex Chen, 3rd year\nPriya Nair, Dr. Sam Okafor, 1st year", style:"min-height:96px;max-width:none"});
+  var addBtn = h("button", {class:"btn primary", type:"button", text:"Create codes", onclick:async function(){
+    var lines = bulk.value.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    if (!lines.length) { addMsg.textContent = "Add at least one student."; return; }
+    addBtn.disabled = true; var made = 0;
+    try {
+      for (var i = 0; i < lines.length; i++) {
+        var p = lines[i].split(",").map(function(x){ return x.trim(); });
+        var code = newCode();
+        await db.doc("students/" + code).set({name:p[0], advisor:p[1] || "", year:p[2] || "", createdAt:new Date().toISOString(),
+          student:{}, advisorPart:{}, director:{}, status:{studentAt:"", advisorAt:""}});
+        made++;
+      }
+      bulk.value = ""; addMsg.textContent = made + " code" + (made === 1 ? "" : "s") + " created.";
+    } catch(e) { addMsg.textContent = "Stopped after " + made + ". Check your access and try again."; }
+    addBtn.disabled = false;
+  }});
+
+  function paintRoster(){
+    var sorted = docs.slice().sort(function(a, b){ return String(a.name).localeCompare(String(b.name)); });
+    if (!sorted.length) {
+      rosterHost.replaceChildren(h("div", {class:"empty-state", text:"No students yet. Paste names above to create their codes."}));
+      return;
+    }
+    var thead = h("tr", null, ["Student","Advisor","Year","Code","Student part","Advisor part","Mean","TF Fall","TF Spring",""].map(function(t){ return h("th", {text:t}); }));
+    var body = sorted.map(function(d){
+      var ss = studentStatus(d, "student", "studentAt"), as = studentStatus(d, "advisorPart", "advisorAt");
+      var m = studentMean(d);
+      function tf(key){
+        return h("input", {class:"inp", type:"number", min:1, max:5, step:0.1, value:(d.director || {})[key] || "", "aria-label":key,
+          onchange:async function(e){ try { await db.doc("students/" + d.id).update({director:{[key]:e.target.value}}); } catch(_) { toast("Could not save"); } }});
+      }
+      return h("tr", null,
+        h("td", {text:d.name}), h("td", {text:d.advisor}), h("td", {text:d.year}),
+        h("td", {class:"code"}, d.id, " ", h("button", {class:"btn sm", type:"button", text:"Copy", onclick:function(){ copy(d.id, "Code copied"); }})),
+        h("td", null, h("span", {class:"pill", "data-s":ss, text:PILL[ss]})),
+        h("td", null, h("span", {class:"pill", "data-s":as, text:PILL[as]})),
+        h("td", {text:f1(m)}),
+        h("td", null, tf("tfFall")), h("td", null, tf("tfSpring")),
+        h("td", null, h("div", {class:"acts"},
+          h("button", {class:"btn sm", type:"button", text:"Student", onclick:function(){ openRecord(d.id, "student", true); }}),
+          h("button", {class:"btn sm", type:"button", text:"Advisor", onclick:function(){ openRecord(d.id, "advisor", true); }}),
+          confirmDel === d.id
+            ? h("button", {class:"btn sm primary", type:"button", text:"Confirm delete", onclick:async function(){ confirmDel = null; try { await db.doc("students/" + d.id).delete(); } catch(_) { toast("Could not delete"); } }})
+            : h("button", {class:"btn sm", type:"button", text:"Delete", onclick:function(){ confirmDel = d.id; paintRoster(); setTimeout(function(){ if (confirmDel === d.id) { confirmDel = null; paintRoster(); } }, 4000); }}))));
+    });
+    var sDone = sorted.filter(function(d){ return (d.status || {}).studentAt; }).length;
+    var aDone = sorted.filter(function(d){ return (d.status || {}).advisorAt; }).length;
+    rosterHost.replaceChildren(
+      h("p", {class:"sub", text:sorted.length + " students · " + sDone + " student parts and " + aDone + " advisor parts submitted"}),
+      h("div", {class:"tablewrap"}, h("table", null, h("thead", null, thead), h("tbody", null, body))));
+  }
+
+  function paintNarr(){
+    var blocks = RATED.map(function(g){ return {title:"Goal " + g.n + " · " + g.title, text:goalNarrative(docs, g)}; });
+    blocks.push({title:"Goal 4 · Teaching", text:tfNarrative(docs)});
+    var all = blocks.map(function(b){ return b.text; }).join("\n\n");
+    narrHost.replaceChildren(
+      blocks.map(function(b){
+        return h("div", {class:"narr"}, h("div", {class:"top"}, h("h3", {text:b.title}),
+          h("button", {class:"btn sm", type:"button", text:"Copy", onclick:function(){ copy(b.text, "Copied"); }})), h("p", {text:b.text}));
+      }),
+      h("div", {style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"},
+        h("button", {class:"btn primary", type:"button", text:"Copy all four", onclick:function(){ copy(all, "Copied all four"); }}),
+        h("button", {class:"btn", type:"button", text:"Download all responses (CSV)", onclick:async function(){
+          if (!dl) { toast("Downloads are not available here"); return; }
+          try { await dl.save({filename:"BBC-annual-report-responses.csv", data:buildCsv(docs.slice().sort(function(a, b){ return String(a.name).localeCompare(String(b.name)); }))}); }
+          catch(e) { if (!e || e.code !== "declined") toast("Could not download"); }
+        }})));
+  }
+
+  var view = h("div", {class:"dir"},
+    h("h1", {text:"Director dashboard"}),
+    h("div", {class:"hint", style:"color:var(--muted)"}, h("button", {class:"btn link", type:"button", text:"← Back to code entry", onclick:goEntry})),
+    h("div", {class:"twocol"},
+      h("div", {class:"panel"}, h("h2", {text:"Assessment cycle"}), h("p", {class:"sub", text:"Shown on every form and used for academic-year labels in the compiled text."}),
+        h("div", {class:"dates"}, h("label", {for:"cycStart"}, "Start", startIn), h("label", {for:"cycEnd"}, "End", endIn))),
+      h("div", {class:"panel"}, h("h2", {text:"Add students"}), h("p", {class:"sub", text:"One per line: name, advisor, year. Each student gets one code, shared with their advisor."}),
+        bulk, h("div", {style:"margin-top:8px"}, addBtn), addMsg)),
+    h("div", {class:"panel"}, h("h2", {text:"Roster"}), rosterHost),
+    h("div", {class:"panel"}, h("h2", {text:"Compiled results"}), h("p", {class:"sub", text:"Draft text for “What were the results and key findings of evidence assessed?” Numbers update as advisors enter ratings and as you enter teaching scores above."}), narrHost));
+  show(view);
+  paintRoster(); paintNarr();
+
+  var unsub = db.collection("students").onSnapshot(function(snap){
+    docs = snap.docs.map(function(s){ return Object.assign({id:s.id}, s.data()); });
+    paintRoster(); paintNarr();
+  }, function(){});
+  cleanups.push(unsub);
+}
+
+/* ---------- boot ---------- */
+function paintCycle(){
+  document.getElementById("cycleLabel").textContent = "PhD Program in Psychology · Brain, Behavior & Cognition · Cycle " + fmtDate(cycle.start) + " – " + fmtDate(cycle.end);
+}
+paintCycle();
+show(h("div", {class:"entry"}, h("h1", {text:"Annual report for BBC doctoral students"}), h("p", {text:"Loading…"})));
+
+(async function(){
+  try { db = await claude.use("db"); userCap = await claude.use("user"); dl = await claude.use("downloads"); } catch(_) { db = null; }
+  if (!db) {
+    show(h("div", {class:"entry"}, h("h1", {text:"Sign in to continue"}),
+      h("p", {text:"This form stores answers for each student, so you need to be signed in to Claude to open it. Sign in, then reload this page."})));
+    return;
+  }
+  try { isDirector = userCap ? await userCap.canEdit() : false; } catch(_) { isDirector = false; }
+  try { var cw = userCap ? await userCap.can("data.write") : null; canWrite = cw !== false; } catch(_) {}
+  try {
+    var c = await db.doc("config/cycle").get();
+    if (c.exists) { cycle = Object.assign(cycle, c.data()); paintCycle(); }
+    var u = db.doc("config/cycle").onSnapshot(function(s){ if (s.exists) { cycle = Object.assign(cycle, s.data()); paintCycle(); } }, function(){});
+  } catch(_) {}
+  goEntry();
+})();
+})();
+</script>
