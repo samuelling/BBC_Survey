@@ -171,7 +171,6 @@ body{margin:0}
 "use strict";
 var CYCLE="11/16/2025 – 11/15/2026";
 var ENDPOINT="https://script.google.com/macros/s/AKfycbyu1fT8zW8qVNQ5Xyr-WpukmMWnqF3n2aBycuNMmQo9pEcZdgD1aZp_-j3qENj8it76WQ/exec";
-var ROSTER=[{"id": "alvarez-luis", "name": "Luis Alvarez", "sortName": "Alvarez, Luis", "advisor": "Kate Nussenbaum"}, {"id": "barlowe-alexandria", "name": "Alexandria Barlowe", "sortName": "Barlowe, Alexandria", "advisor": "Catherine Caldwell-Harris"}, {"id": "blocker-beckett", "name": "Beckett Blocker", "sortName": "Blocker, Beckett", "advisor": "Heidi Meyer"}, {"id": "burnell-hannah", "name": "Hannah Burnell", "sortName": "Burnell, Hannah", "advisor": "Heidi Meyer"}, {"id": "chen-chang-yuan-karen", "name": "Chang Yuan \"Karen\" Chen", "sortName": "Chen, Chang Yuan \"Karen\"", "advisor": "Kate Nussenbaum"}, {"id": "cho-sanga", "name": "Sanga Cho", "sortName": "Cho, Sanga", "advisor": "Sam Ling"}, {"id": "fang-yu", "name": "Yu Fang", "sortName": "Fang, Yu", "advisor": "Robert Reinhart"}, {"id": "fang-jiarui-ray", "name": "Jiarui (Ray) Fang", "sortName": "Fang, Jiarui (Ray)", "advisor": "Michael Hasselmo"}, {"id": "lin-chenyang-leo", "name": "Chenyang \"Leo\" Lin", "sortName": "Lin, Chenyang \"Leo\"", "advisor": "Robert Reinhart"}, {"id": "mishra-urvi", "name": "Urvi Mishra", "sortName": "Mishra, Urvi", "advisor": "Benjamin Scott"}, {"id": "nestor-jeff", "name": "Jeff Nestor", "sortName": "Nestor, Jeff", "advisor": "Rachel Denison"}, {"id": "pascale-michael", "name": "Michael Pascale", "sortName": "Pascale, Michael", "advisor": "Joseph McGuire"}, {"id": "possidente-tom", "name": "Tom Possidente", "sortName": "Possidente, Tom", "advisor": "David Somers"}, {"id": "sun-chenanke-anke", "name": "Chenanke \"Anke\" Sun", "sortName": "Sun, Chenanke \"Anke\"", "advisor": "Sam Ling"}, {"id": "tamer-betul", "name": "Betul Tamer", "sortName": "Tamer, Betul", "advisor": "Mark Howe"}, {"id": "wang-chenyu", "name": "Chenyu Wang", "sortName": "Wang, Chenyu", "advisor": "Marc Howard"}, {"id": "wang-feiyi", "name": "Feiyi Wang", "sortName": "Wang, Feiyi", "advisor": "Sam Ling"}, {"id": "wang-juneau", "name": "Juneau Wang", "sortName": "Wang, Juneau", "advisor": "Rachel Denison"}, {"id": "yan-kaicheng", "name": "Kaicheng Yan", "sortName": "Yan, Kaicheng", "advisor": "Arthur Lee"}, {"id": "zhu-jiating", "name": "Jiating Zhu", "sortName": "Zhu, Jiating", "advisor": "Rachel Denison"}];
 var canWrite=true;
 /* ---------- helpers ---------- */
 function h(tag, attrs){
@@ -373,72 +372,62 @@ function ls(k, v){
     if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
   } catch(_) { return null; }
 }
-function lastWord(n){ var p = String(n || "").trim().split(/\s+/); return p[p.length - 1] || ""; }
-function bySort(a, b){ return a.sortName.localeCompare(b.sortName); }
-
-function goEntry(){
-  var mode = ls("bbc26:mode") === "advisor" ? "advisor" : "student";
-  var selStudent = ls("bbc26:student") || "", selAdvisor = ls("bbc26:advisor") || "";
-  var panel = h("div", {style:"margin-top:16px"});
-  var segBtns = {};
-  var seg = h("div", {class:"seg", role:"tablist"});
-  [["student","I'm a student"],["advisor","I'm an advisor"]].forEach(function(p){
-    segBtns[p[0]] = h("button", {type:"button", class:"segbtn", role:"tab", text:p[1], onclick:function(){ mode = p[0]; ls("bbc26:mode", mode); paint(); }});
-    seg.append(segBtns[p[0]]);
-  });
-  function submittedMark(role, id){ return ls("bbc26:" + role + ":" + id + ":submitted") ? "done" : (ls("bbc26:" + role + ":" + id) ? "prog" : "none"); }
-  var LBL = {done:"Submitted from this device", prog:"Draft saved", none:"Not started"};
-  function paint(){
-    Object.keys(segBtns).forEach(function(k){ segBtns[k].setAttribute("aria-selected", String(k === mode)); });
-    panel.replaceChildren();
-    if (mode === "student") {
-      var sorted = ROSTER.slice().sort(bySort);
-      var btn = h("button", {class:"btn primary", type:"button", text:"Open my report", disabled:!selStudent, onclick:function(){ openForm("student", ROSTER.filter(function(r){ return r.id === selStudent; })[0]); }});
-      var sel = h("select", {class:"inp big", id:"studentSel", "aria-label":"Your name", onchange:function(e){ selStudent = e.target.value; ls("bbc26:student", selStudent); btn.disabled = !selStudent; }},
-        [h("option", {value:"", text:"Choose your name…"})].concat(sorted.map(function(d){ return h("option", {value:d.id, text:d.sortName, selected:d.id === selStudent}); })));
-      panel.append(sel, h("div", {style:"margin-top:12px"}, btn));
-    } else {
-      var names = Array.from(new Set(ROSTER.map(function(d){ return d.advisor; }))).sort(function(a, b){ return lastWord(a).localeCompare(lastWord(b)); });
-      var list = h("div", {style:"margin-top:14px"});
-      function paintList(){
-        list.replaceChildren();
-        if (!selAdvisor) return;
-        var mine = ROSTER.filter(function(d){ return d.advisor === selAdvisor; }).sort(bySort);
-        list.append(h("div", {style:"color:var(--muted);font-size:13px;margin-bottom:2px", text:"Your students (" + mine.length + ")"}));
-        mine.forEach(function(d){
-          var s = submittedMark("advisor", d.id);
-          list.append(h("div", {class:"advrow"}, h("span", {class:"nm", text:d.name}),
-            h("span", {class:"pill", "data-s":s, text:LBL[s]}),
-            h("button", {class:"btn sm primary", type:"button", text:"Review", onclick:function(){ openForm("advisor", d); }})));
-        });
-      }
-      var asel = h("select", {class:"inp big", id:"advisorSel", "aria-label":"Your name", onchange:function(e){ selAdvisor = e.target.value; ls("bbc26:advisor", selAdvisor); paintList(); }},
-        [h("option", {value:"", text:"Choose your name…"})].concat(names.map(function(n){ return h("option", {value:n, text:n, selected:n === selAdvisor}); })));
-      panel.append(asel, list);
-      paintList();
-    }
-  }
+async function api(body){
+  var res = await fetch(ENDPOINT, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(body)});
+  return res.json();
+}
+function landing(msg, bad){
   show(h("div", {class:"entry"},
     h("h1", {text:"Annual report for BBC doctoral students"}),
-    h("p", {text:"Choose your name to begin. Students fill in their section. Advisors choose their own name, then review each of their students. Your answers are saved on this device as you type and are sent only when you submit."}),
-    seg, panel));
-  paint();
+    h("p", {class:bad ? "err" : "", style:bad ? "min-height:0" : "", text:msg || "Open the personal link from your email to begin. Each student and each advisor has their own link."})));
 }
+function boot(){
+  var code = (location.hash || "").replace(/^#/, "").trim();
+  if (!code) { landing(); return; }
+  show(h("div", {class:"entry"}, h("p", {text:"Loading…"})));
+  api({action:"open", code:code}).then(function(r){
+    if (!r || !r.ok) { landing("That link was not recognized. Check that you copied the whole link from your email, or reply to Sam.", true); return; }
+    openForm(code, r);
+  }).catch(function(){ landing("Could not reach the server. Check your connection and reload the page.", true); });
+}
+window.addEventListener("hashchange", boot);
 
-function openForm(role, rec){
-  var key = "bbc26:" + role + ":" + rec.id;
-  var data = {};
-  try { data = JSON.parse(ls(key) || "{}") || {}; } catch(_) { data = {}; }
-  var saveEl = h("div", {class:"save"}), timer = null;
-  function set(k, v){
-    data[k] = v;
-    clearTimeout(timer);
-    timer = setTimeout(function(){ ls(key, JSON.stringify(data)); saveEl.textContent = "Draft saved on this device " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); }, 400);
+function openForm(code, info){
+  var role = info.role;
+  var key = "bbc26:" + code;
+  var data = info.draft || {};
+  if (!info.draft) { try { data = JSON.parse(ls(key) || "{}") || {}; } catch(_) { data = {}; } }
+  var saveEl = h("div", {class:"save"});
+  var timer = null, saving = false, dirty = false, fails = 0;
+  function stamp(){ return new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); }
+  async function flush(){
+    if (saving || !dirty) return;
+    saving = true; dirty = false;
+    try {
+      var r = await api({action:"save", code:code, answers:data});
+      if (r && r.ok) { fails = 0; saveEl.className = "save"; saveEl.textContent = "Saved " + stamp(); }
+      else throw new Error("save");
+    } catch(e) {
+      dirty = true; fails++;
+      saveEl.className = "save error"; saveEl.textContent = "Not saved to the server yet. A copy is kept on this device.";
+    }
+    saving = false;
+    if (dirty && fails < 5) timer = setTimeout(flush, 8000);
   }
+  function set(k, v){
+    data[k] = v; ls(key, JSON.stringify(data)); dirty = true;
+    saveEl.className = "save"; saveEl.textContent = "Saving…";
+    clearTimeout(timer); timer = setTimeout(flush, 1200);
+  }
+
   var body = h("div");
-  if (role === "student") {
-    STUDENT.forEach(function(s){ body.append(sectionEl(s, data, set, false)); });
-  } else {
+  if (role === "advisor") {
+    var sa = info.studentAnswers;
+    body.append(h("details", {class:"studentro", open:true},
+      h("summary", {text:"Student responses" + (sa ? "" : " (not yet submitted)")}),
+      h("div", {class:"inner"}, sa
+        ? STUDENT.map(function(s){ return sectionEl(s, sa, function(){}, true); })
+        : h("p", {class:"blurb", style:"margin:12px 0", text:"This student has not submitted yet. You can rate now or come back to the same link later."}))));
     RATED.forEach(function(g){
       body.append(h("section", {class:"sec"}, h("div", {class:"num", text:g.n}),
         h("div", null, h("h2", {text:g.title}),
@@ -457,50 +446,39 @@ function openForm(role, rec){
       h("div", null, h("h2", {text:"Overall"}), h("div", {class:"fields", style:"margin-top:14px"},
         fieldEl({k:"c_overall", type:"long", label:"Overall assessment and recommended next steps"}, data.c_overall, function(v){ set("c_overall", v); }, false),
         h("div", {class:"field"}, h("label", {for:"f_met", text:"Have you discussed this review with the student?"}), met)))));
+  } else {
+    STUDENT.forEach(function(s){ body.append(sectionEl(s, data, set, false)); });
   }
 
-  /* submit */
-  var emailIn = h("input", {class:"inp", id:"email", type:"email", autocomplete:"email", placeholder:"you@bu.edu", value:ls("bbc26:email:" + role) || "", style:"max-width:360px"});
   var msg = h("div", {class:"msg", role:"status"});
-  var btn = h("button", {class:"btn primary", type:"button", onclick:submit});
   var label = role === "student" ? "Submit my report" : "Submit review";
-  btn.textContent = label;
+  var btn = h("button", {class:"btn primary", type:"button", text:label, onclick:submit});
   function note(text, cls){ msg.className = "msg " + (cls || ""); msg.textContent = text; }
-  var prev = ls(key + ":submitted");
-  if (prev) note("Last submitted " + new Date(prev).toLocaleString() + ". You can edit and submit again; the latest submission is used.", "ok");
-
+  if (info.submittedAt) note("Last submitted " + new Date(info.submittedAt).toLocaleString() + ". You can edit and submit again; the latest submission is used.", "ok");
   async function submit(){
-    var email = emailIn.value.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { note("Enter your email address to submit.", "bad"); emailIn.focus(); return; }
     if (role === "advisor" && !RATED.some(function(g){ return typeof data["r" + g.n] === "number"; })) { note("Add at least one rating before submitting.", "bad"); return; }
     if (role === "student" && !Object.keys(data).some(function(k){ return isFilled(data[k]); })) { note("Answer at least one question before submitting.", "bad"); return; }
-    if (!ENDPOINT) { note("This form is not connected to its response sheet yet. Your draft is saved on this device.", "bad"); return; }
-    clearTimeout(timer); ls(key, JSON.stringify(data)); ls("bbc26:email:" + role, email);
-    btn.disabled = true; btn.textContent = "Submitting…"; note("");
+    clearTimeout(timer); btn.disabled = true; btn.textContent = "Submitting…"; note("");
     try {
-      var res = await fetch(ENDPOINT, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({role:role, studentId:rec.id, email:email, cycle:CYCLE, answers:data})});
-      var j = await res.json();
-      if (j && j.ok) { ls(key + ":submitted", new Date().toISOString()); note("Submitted " + new Date().toLocaleString() + ". Thank you. You can edit and submit again; the latest submission is used.", "ok"); }
-      else note((j && j.error) || "The submission was not accepted.", "bad");
-    } catch(e) { note("Could not reach the server. Your draft is saved on this device. Try again in a minute.", "bad"); }
+      var r = await api({action:"submit", code:code, answers:data});
+      if (r && r.ok) { dirty = false; note("Submitted " + new Date().toLocaleString() + ". Thank you. You can edit and submit again; the latest submission is used.", "ok"); }
+      else note((r && r.error) || "The submission was not accepted.", "bad");
+    } catch(e) { note("Could not reach the server. Your draft is kept on this device. Try again in a minute.", "bad"); }
     btn.disabled = false; btn.textContent = label;
   }
 
-  var back = h("button", {class:"btn link", type:"button", text:"← Back", onclick:goEntry});
   show(h("div", {style:"max-width:760px"},
-    h("div", {class:"rec-head"}, h("div", {class:"grow"}, h("div", null, back),
-      h("h1", {text:role === "student" ? rec.name : "Review: " + rec.name}),
-      h("div", {class:"meta", text:"Advisor: " + rec.advisor + " · Cycle " + CYCLE}), saveEl)),
+    h("div", {class:"rec-head"}, h("div", {class:"grow"},
+      h("h1", {text:role === "student" ? info.name : "Review: " + info.name}),
+      h("div", {class:"meta", text:(role === "student" ? "Advisor: " + info.advisor : "Your student") + " · Cycle " + (info.cycle || "")}), saveEl)),
     body,
     h("section", {class:"sec", style:"grid-template-columns:minmax(0,1fr)"},
       h("div", null, h("h2", {text:"Submit"}),
-        h("p", {class:"blurb", text:"Enter the BU email address the program has on file for you. Submissions from other addresses are rejected."}),
-        h("div", {class:"field"}, h("label", {for:"email", text:"Your email address"}), emailIn),
-        h("div", {style:"margin-top:14px"}, btn), msg))));
+        h("p", {class:"blurb", text:role === "student" ? "Submitting sends your report to the program and lets your advisor read it. You can edit and submit again." : "Submitting sends your ratings to the program."}),
+        h("div", null, btn), msg))));
 }
 
-goEntry();
+boot();
 })();
 
 </script></body></html>
