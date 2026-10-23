@@ -169,7 +169,7 @@ body{margin:0}
 <script>
 (function(){
 "use strict";
-var CYCLE="11/16/2025 – 11/15/2026";
+var CYCLE="Fall 2025 – Summer 2026";
 var ENDPOINT="https://script.google.com/macros/s/AKfycbyu1fT8zW8qVNQ5Xyr-WpukmMWnqF3n2aBycuNMmQo9pEcZdgD1aZp_-j3qENj8it76WQ/exec";
 var canWrite=true;
 /* ---------- helpers ---------- */
@@ -229,7 +229,7 @@ function normCode(s){
 
 /* ---------- form definitions ---------- */
 var STUDENT = [
-  {id:"g1", n:1, title:"Mastery of existing theory and research", blurb:"What you learned and which milestones you reached this cycle.", fields:[
+  {id:"g1", n:1, title:"Mastery of existing theory and research", blurb:"What you learned and which milestones you reached from Fall 2025 through Summer 2026.", fields:[
     {k:"g1_stage", type:"line", label:"Current stage and milestones completed", hint:"For example coursework, qualifying project, proposal, candidacy or defense."},
     {k:"g1_summary", type:"long", label:"How did you build your command of the literature?", hint:"Courses, readings, reading groups, exams and committee meetings."}]},
   {id:"g2", n:2, title:"Independent, ethical research", blurb:"Your research output and your own contributions to it.", fields:[
@@ -239,19 +239,19 @@ var STUDENT = [
     {k:"g2_talks", type:"list", label:"Talks and posters", add:"Add presentation", cols:[
       {k:"cite", label:"Title, venue and date", w:"3fr"},
       {k:"status", label:"Type", type:"select", opts:["Poster","Talk","Invited talk"], w:"1fr"}]},
-    {k:"g2_funding", type:"long", label:"Fellowships, grants and awards", hint:"Applied for or received this cycle."},
+    {k:"g2_funding", type:"long", label:"Fellowships, grants and awards", hint:"Applied for or received from Fall 2025 through Summer 2026."},
     {k:"g2_summary", type:"long", label:"Research progress and your independent contributions"}]},
   {id:"g3", n:3, title:"Professional and ethical scholarly activity", blurb:"How you conducted yourself as a scholar.", fields:[
     {k:"g3_ethics", type:"long", label:"Ethics and responsible conduct of research training"},
     {k:"g3_service", type:"long", label:"Service, mentoring and community contributions", hint:"Lab, program, department, university and field."}]},
-  {id:"g4", n:4, title:"Teaching", blurb:"Leave this blank if you did not teach this cycle.", fields:[
+  {id:"g4", n:4, title:"Teaching", blurb:"Leave this blank if you did not teach from Fall 2025 through Summer 2026.", fields:[
     {k:"g4_courses", type:"list", label:"Courses taught", add:"Add course", cols:[
       {k:"term", label:"Term", type:"select", opts:["Fall","Spring","Summer"], w:"1fr"},
       {k:"cite", label:"Course", w:"2fr"},
       {k:"status", label:"Role", type:"select", opts:["Teaching fellow","Teaching assistant","Grader","Guest lecturer","Instructor of record"], w:"1.4fr"}]},
     {k:"g4_reflection", type:"long", label:"Teaching experience and how you developed as a teacher"}]},
   {id:"plan", title:"Looking ahead", blurb:"Shared with your advisor and the program director.", fields:[
-    {k:"plan_goals", type:"long", label:"Goals for the next cycle"},
+    {k:"plan_goals", type:"long", label:"Goals for the coming year (2026-2027)"},
     {k:"plan_support", type:"long", label:"Support you need from your advisor or the program"}]}
 ];
 var RATED = [
@@ -470,7 +470,7 @@ function openForm(code, info){
   show(h("div", {style:"max-width:760px"},
     h("div", {class:"rec-head"}, h("div", {class:"grow"},
       h("h1", {text:role === "student" ? info.name : "Review: " + info.name}),
-      h("div", {class:"meta", text:(role === "student" ? "Advisor: " + info.advisor : "Your student") + " · Cycle " + (info.cycle || "")}), saveEl)),
+      h("div", {class:"meta", text:(role === "student" ? "Advisor: " + info.advisor : "Your student") + " · " + CYCLE}), saveEl)),
     body,
     h("section", {class:"sec", style:"grid-template-columns:minmax(0,1fr)"},
       h("div", null, h("h2", {text:"Submit"}),
