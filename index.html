@@ -55,6 +55,15 @@ button{cursor:pointer}
 .err{color:var(--accent);margin-top:12px;font-size:14px;min-height:20px}
 .dirlink{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted);font-size:14px}
 
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--soft);border-radius:10px}
+.segbtn{border:0;background:none;padding:10px;border-radius:7px;font-weight:600;color:var(--muted)}
+.segbtn[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.inp.big{font-size:17px;padding:13px}
+.advrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 0;border-top:1px solid var(--line)}
+.advrow .nm{flex:1;min-width:160px;font-weight:600}
+.codebox2{margin-top:26px;color:var(--muted);font-size:14px}
+.codebox2 summary{cursor:pointer}
+
 /* record */
 .rec-head{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:flex-end;padding-block:26px 18px}
 .rec-head h1{font-size:clamp(26px,5vw,36px);line-height:1.1}
@@ -549,34 +558,95 @@ async function openRecord(code, role, fromDirector){
 }
 
 /* ---------- entry ---------- */
+function lsGet(k){ try { return localStorage.getItem(k) || ""; } catch(_) { return ""; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(_) {} }
+function lastWord(n){ var p = String(n || "").trim().split(/\s+/); return p[p.length - 1] || ""; }
+
 function goEntry(){
   clearViews();
   document.getElementById("whoLabel").textContent = "";
-  var input = h("input", {class:"codebox", id:"codeIn", type:"text", placeholder:"XXXX-XXXX", autocomplete:"off", spellcheck:false, maxLength:12, "aria-label":"Access code"});
-  try { var last = localStorage.getItem("bbc_last_code"); if (last) input.value = last; } catch(_){}
+  var docs = [];
+  var mode = lsGet("bbc_mode") === "advisor" ? "advisor" : "student";
+  var selStudent = lsGet("bbc_student"), selAdvisor = lsGet("bbc_advisor");
   var err = h("div", {class:"err", role:"alert"});
-  async function go(role){
-    var code = normCode(input.value);
+  var panel = h("div", {style:"margin-top:16px"});
+  var segBtns = {};
+  var seg = h("div", {class:"seg", role:"tablist"});
+  [["student","I'm a student"],["advisor","I'm an advisor"]].forEach(function(p){
+    segBtns[p[0]] = h("button", {type:"button", class:"segbtn", role:"tab", text:p[1], onclick:function(){ mode = p[0]; lsSet("bbc_mode", mode); err.textContent = ""; paint(); }});
+    seg.append(segBtns[p[0]]);
+  });
+
+  async function open(id, role){
     err.textContent = "";
-    if (code.length !== 9) { err.textContent = "Codes have eight characters, like K7Q2-M9XD."; input.focus(); return; }
     try {
-      var ok = await openRecord(code, role, false);
-      if (!ok) { err.textContent = "That code was not found. Check it with the director."; return; }
-      try { localStorage.setItem("bbc_last_code", code); } catch(_){}
-    } catch(e) { err.textContent = "Could not reach the form right now. Try again in a moment."; }
+      var ok = await openRecord(id, role, false);
+      if (!ok) err.textContent = "That record was not found. Ask the program director.";
+    } catch(e) { err.textContent = "Could not open the form right now. Try again in a moment."; }
   }
-  var form = h("form", {onsubmit:function(e){ e.preventDefault(); go("student"); }},
-    input,
-    h("div", {class:"rolepick"},
-      h("button", {class:"btn primary", type:"button", text:"Open as student", onclick:function(){ go("student"); }}),
-      h("button", {class:"btn", type:"button", text:"Open as advisor", onclick:function(){ go("advisor"); }})),
-    err);
+
+  function paint(){
+    Object.keys(segBtns).forEach(function(k){ segBtns[k].setAttribute("aria-selected", String(k === mode)); });
+    panel.replaceChildren();
+    if (!docs.length) {
+      panel.append(h("p", {style:"color:var(--muted)", text:"The roster has not been set up yet. Contact the program director."}));
+      return;
+    }
+    if (mode === "student") {
+      var sorted = docs.slice().sort(function(a, b){ return String(a.sortName || a.name).localeCompare(String(b.sortName || b.name)); });
+      if (!sorted.some(function(d){ return d.id === selStudent; })) selStudent = "";
+      var btn = h("button", {class:"btn primary", type:"button", text:"Open my report", disabled:!selStudent, onclick:function(){ open(selStudent, "student"); }});
+      var sel = h("select", {class:"inp big", id:"studentSel", "aria-label":"Your name",
+        onchange:function(e){ selStudent = e.target.value; lsSet("bbc_student", selStudent); btn.disabled = !selStudent; }},
+        [h("option", {value:"", text:"Choose your name…"})].concat(sorted.map(function(d){
+          return h("option", {value:d.id, text:d.sortName || d.name, selected:d.id === selStudent}); })));
+      panel.append(sel, h("div", {style:"margin-top:12px"}, btn));
+    } else {
+      var names = Array.from(new Set(docs.map(function(d){ return d.advisor; }).filter(Boolean)))
+        .sort(function(a, b){ return lastWord(a).localeCompare(lastWord(b)); });
+      if (names.indexOf(selAdvisor) < 0) selAdvisor = "";
+      var list = h("div", {style:"margin-top:14px"});
+      function paintList(){
+        list.replaceChildren();
+        if (!selAdvisor) return;
+        var mine = docs.filter(function(d){ return d.advisor === selAdvisor; }).sort(function(a, b){ return String(a.sortName || a.name).localeCompare(String(b.sortName || b.name)); });
+        list.append(h("div", {class:"hint", style:"color:var(--muted);font-size:13px;margin-bottom:2px", text:"Your students (" + mine.length + ")"}));
+        mine.forEach(function(d){
+          var ss = studentStatus(d, "student", "studentAt"), as = studentStatus(d, "advisorPart", "advisorAt");
+          list.append(h("div", {class:"advrow"},
+            h("span", {class:"nm", text:d.name}),
+            h("span", {class:"pill", "data-s":ss, text:"Student: " + PILL[ss].toLowerCase()}),
+            h("span", {class:"pill", "data-s":as, text:"You: " + PILL[as].toLowerCase()}),
+            h("button", {class:"btn sm primary", type:"button", text:"Open", onclick:function(){ open(d.id, "advisor"); }})));
+        });
+      }
+      var asel = h("select", {class:"inp big", id:"advisorSel", "aria-label":"Your name",
+        onchange:function(e){ selAdvisor = e.target.value; lsSet("bbc_advisor", selAdvisor); paintList(); }},
+        [h("option", {value:"", text:"Choose your name…"})].concat(names.map(function(n){ return h("option", {value:n, text:n, selected:n === selAdvisor}); })));
+      panel.append(asel, list);
+      paintList();
+    }
+    /* access-code fallback */
+    var codeIn = h("input", {class:"inp", id:"codeIn", type:"text", placeholder:"XXXX-XXXX", autocomplete:"off", spellcheck:false, maxLength:12, "aria-label":"Access code", style:"font-family:var(--f-mono);letter-spacing:.1em;text-transform:uppercase;max-width:180px"});
+    function byCode(role){ var c = normCode(codeIn.value); if (c.length !== 9) { err.textContent = "Codes look like K7Q2-M9XD."; return; } open(c, role); }
+    panel.append(h("details", {class:"codebox2"}, h("summary", {text:"Use an access code instead"}),
+      h("div", {style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"}, codeIn,
+        h("button", {class:"btn", type:"button", text:"As student", onclick:function(){ byCode("student"); }}),
+        h("button", {class:"btn", type:"button", text:"As advisor", onclick:function(){ byCode("advisor"); }}))));
+  }
+
   var view = h("div", {class:"entry"},
     h("h1", {text:"Annual report for BBC doctoral students"}),
-    h("p", {text:"Students complete their part first. Advisors use the same code to read it and add their ratings. Enter the code the program director sent you."}),
-    form,
+    h("p", {text:"Choose your name to begin. Students fill in their section first. Advisors then choose their own name to read their students’ responses and add ratings."}),
+    seg, panel, err,
     isDirector ? h("div", {class:"dirlink"}, h("span", {text:"You are signed in as a director."}), h("button", {class:"btn", type:"button", text:"Open director dashboard", onclick:goDirector})) : null);
   show(view);
+  paint();
+  var unsub = db.collection("students").onSnapshot(function(snap){
+    docs = snap.docs.map(function(s){ return Object.assign({id:s.id}, s.data()); });
+    paint();
+  }, function(){ err.textContent = "Could not load the roster. Reload the page."; });
+  cleanups.push(unsub);
 }
 
 /* ---------- director ---------- */
