@@ -1,7 +1,7 @@
 # BBC_Survey
 
-Annual report portal for the BBC (Brain, Behavior & Cognition) PhD program.
+Annual report form for the BBC (Brain, Behavior & Cognition) PhD program, served as a static page with GitHub Pages.
 
-- `index.html` is the single-page form, published as a Claude artifact (uses the artifact `db`, `user` and `downloads` capabilities).
-- Each student gets one access code. Students fill their section, advisors use the same code to add ratings (1-4) for Goals 1-3 and comments, and the director dashboard compiles results into draft text for the annual assessment report.
-- Data lives in the artifact's database, not in this repo.
+- `index.html` is the whole form. Students and advisors pick their name, fill in their section, and submit with their BU email.
+- Drafts save in the visitor's own browser. Submissions go to a Google Apps Script web app (set `ENDPOINT` near the top of the script in `index.html`) that checks the email against the roster and appends a row to a private Google Sheet.
+- The Apps Script holds the email allowlist and is deliberately not stored in this repo.

@@ -1,5 +1,5 @@
-<title>BBC Annual Report Portal</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>BBC Annual Report</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
 <style>
 /* Layout: slim top bar, then either a centered code-entry panel, a sticky-index form with long sections, or a director roster table. */
@@ -159,23 +159,20 @@ td .inp{width:64px;padding:5px 7px}
   .studentro .sec{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
-</style>
 
-<div class="wrap">
-  <div class="topbar">
-    <span class="brand">BBC <b>Annual Report</b></span>
-    <span class="cycle" id="cycleLabel">PhD Program in Psychology · Brain, Behavior &amp; Cognition</span>
-    <span class="sp"></span>
-    <span class="cycle" id="whoLabel"></span>
-  </div>
-  <main id="main"></main>
-</div>
-<div id="toastHost"></div>
-
+:root{color-scheme:light}
+body{margin:0}
+.msg{margin-top:12px;font-size:14px;min-height:20px;max-width:60ch}
+.msg.ok{color:var(--ok)}.msg.bad{color:var(--accent)}
+</style></head><body>
+<div class="wrap"><div class="topbar"><span class="brand">BBC <b>Annual Report</b></span><span class="cycle">PhD Program in Psychology · Brain, Behavior &amp; Cognition</span></div><main id="main"></main></div>
 <script>
 (function(){
 "use strict";
-
+var CYCLE="11/16/2025 – 11/15/2026";
+var ENDPOINT="__ENDPOINT__";
+var ROSTER=[{"id": "alvarez-luis", "name": "Luis Alvarez", "sortName": "Alvarez, Luis", "advisor": "Kate Nussenbaum"}, {"id": "barlowe-alexandria", "name": "Alexandria Barlowe", "sortName": "Barlowe, Alexandria", "advisor": "Catherine Caldwell-Harris"}, {"id": "blocker-beckett", "name": "Beckett Blocker", "sortName": "Blocker, Beckett", "advisor": "Heidi Meyer"}, {"id": "burnell-hannah", "name": "Hannah Burnell", "sortName": "Burnell, Hannah", "advisor": "Heidi Meyer"}, {"id": "chen-chang-yuan-karen", "name": "Chang Yuan \"Karen\" Chen", "sortName": "Chen, Chang Yuan \"Karen\"", "advisor": "Kate Nussenbaum"}, {"id": "cho-sanga", "name": "Sanga Cho", "sortName": "Cho, Sanga", "advisor": "Sam Ling"}, {"id": "fang-yu", "name": "Yu Fang", "sortName": "Fang, Yu", "advisor": "Robert Reinhart"}, {"id": "fang-jiarui-ray", "name": "Jiarui (Ray) Fang", "sortName": "Fang, Jiarui (Ray)", "advisor": "Michael Hasselmo"}, {"id": "lin-chenyang-leo", "name": "Chenyang \"Leo\" Lin", "sortName": "Lin, Chenyang \"Leo\"", "advisor": "Robert Reinhart"}, {"id": "mishra-urvi", "name": "Urvi Mishra", "sortName": "Mishra, Urvi", "advisor": "Benjamin Scott"}, {"id": "nestor-jeff", "name": "Jeff Nestor", "sortName": "Nestor, Jeff", "advisor": "Rachel Denison"}, {"id": "pascale-michael", "name": "Michael Pascale", "sortName": "Pascale, Michael", "advisor": "Joseph McGuire"}, {"id": "possidente-tom", "name": "Tom Possidente", "sortName": "Possidente, Tom", "advisor": "David Somers"}, {"id": "sun-chenanke-anke", "name": "Chenanke \"Anke\" Sun", "sortName": "Sun, Chenanke \"Anke\"", "advisor": "Sam Ling"}, {"id": "tamer-betul", "name": "Betul Tamer", "sortName": "Tamer, Betul", "advisor": "Mark Howe"}, {"id": "wang-chenyu", "name": "Chenyu Wang", "sortName": "Wang, Chenyu", "advisor": "Marc Howard"}, {"id": "wang-feiyi", "name": "Feiyi Wang", "sortName": "Wang, Feiyi", "advisor": "Sam Ling"}, {"id": "wang-juneau", "name": "Juneau Wang", "sortName": "Wang, Juneau", "advisor": "Rachel Denison"}, {"id": "yan-kaicheng", "name": "Kaicheng Yan", "sortName": "Yan, Kaicheng", "advisor": "Arthur Lee"}, {"id": "zhu-jiating", "name": "Jiating Zhu", "sortName": "Zhu, Jiating", "advisor": "Rachel Denison"}];
+var canWrite=true;
 /* ---------- helpers ---------- */
 function h(tag, attrs){
   var e = document.createElement(tag);
@@ -265,46 +262,6 @@ var RATED = [
 ];
 function ratingCat(r){ return r >= 3 ? "t" : r >= 2 ? "a" : "n"; }
 var CAT_NAME = {t:"Target", a:"Acceptable", n:"Needs improvement"};
-
-/* ---------- state ---------- */
-var db = null, userCap = null, dl = null;
-var isDirector = false, canWrite = true;
-var cycle = {start:"2025-11-16", end:"2026-11-15"};
-var cleanups = [];
-function clearViews(){ cleanups.forEach(function(f){ try { f(); } catch(_){} }); cleanups = []; }
-var main = document.getElementById("main");
-function show(el){ main.replaceChildren(el); window.scrollTo(0,0); }
-
-/* ---------- autosave ---------- */
-function makeSaver(ref, onState){
-  var pend = {}, timer = null, busy = false;
-  function queue(part, key, val){
-    if (!pend[part]) pend[part] = {};
-    pend[part][key] = val;
-    onState("dirty");
-    clearTimeout(timer); timer = setTimeout(flush, 700);
-  }
-  async function flush(){
-    clearTimeout(timer);
-    if (busy) return;
-    busy = true;
-    try {
-      while (Object.keys(pend).length) {
-        var p = pend; pend = {};
-        try {
-          var body = Object.assign({}, p, {updatedAt:new Date().toISOString()});
-          await ref.update(body);
-          onState("saved");
-        } catch(e) {
-          Object.keys(p).forEach(function(part){ pend[part] = Object.assign({}, p[part], pend[part] || {}); });
-          onState("error");
-          break;
-        }
-      }
-    } finally { busy = false; }
-  }
-  return {queue:queue, flush:flush};
-}
 
 /* ---------- field editors ---------- */
 function autosize(t){ t.style.height = "auto"; t.style.height = Math.max(92, t.scrollHeight + 2) + "px"; }
@@ -408,445 +365,142 @@ function ratingEl(value, onChange, ro){
   return wrap;
 }
 
-/* ---------- record view ---------- */
-async function openRecord(code, role, fromDirector){
-  clearViews();
-  var ref = db.doc("students/" + code);
-  var first = await ref.get();
-  if (!first.exists) return false;
-
-  var built = false;
-  var doc = first.data();
-  var saveEl = h("div", {class:"save"});
-  var saver = makeSaver(ref, function(s){
-    saveEl.className = "save" + (s === "error" ? " error" : "");
-    if (s === "dirty") saveEl.textContent = "Saving…";
-    else if (s === "saved") saveEl.textContent = "Saved " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
-    else { saveEl.textContent = ""; saveEl.append("Could not save. ", h("button", {class:"btn link", type:"button", text:"Retry", onclick:function(){ saver.flush(); }})); }
-  });
-  var part = role === "student" ? "student" : "advisorPart";
-  var statusKey = role === "student" ? "studentAt" : "advisorAt";
-
-  var headMeta = h("div", {class:"meta"});
-  var roBox = h("div");
-  var editorBox = h("div");
-  var submitBar = h("div", {class:"submitbar"});
-  var indexBox = h("nav", {class:"index", "aria-label":"Sections"});
-
-  function paintHead(d){
-    headMeta.replaceChildren(
-      "Advisor: " + (d.advisor || "—") + (d.year ? " · " + d.year : "") + " · Cycle " + fmtDate(cycle.start) + " – " + fmtDate(cycle.end));
-  }
-  function paintSubmit(d){
-    var at = (d.status || {})[statusKey];
-    submitBar.replaceChildren();
-    if (!canWrite) { submitBar.append(h("p", {text:"You have view-only access, so changes cannot be saved."})); return; }
-    if (at) {
-      submitBar.append(
-        h("p", {text:"Submitted " + new Date(at).toLocaleDateString() + ". You can keep editing; changes save automatically."}),
-        h("button", {class:"btn", type:"button", text:"Mark as not submitted", onclick:async function(){
-          await saver.flush(); await ref.update({status:{[statusKey]:""}}); }}));
-    } else {
-      submitBar.append(
-        h("p", {text: role === "student"
-          ? "Your answers save automatically. Submit when you are done so your advisor and the director know it is ready."
-          : "Your ratings save automatically. Submit when your review is complete."}),
-        h("button", {class:"btn primary", type:"button", text: role === "student" ? "Submit my report" : "Submit review", onclick:async function(){
-          await saver.flush(); await ref.update({status:{[statusKey]:new Date().toISOString()}}); toast("Submitted"); }}));
-    }
-  }
-  function paintRO(d){
-    if (role !== "advisor") return;
-    roBox.replaceChildren();
-    var st = d.student || {};
-    var submitted = (d.status || {}).studentAt;
-    var det = h("details", {class:"studentro", open:true},
-      h("summary", {text:"Student responses" + (submitted ? "" : " (not yet submitted)")}),
-      h("div", {class:"inner"}, STUDENT.map(function(s){ return sectionEl(s, st, function(){}, true); })));
-    roBox.append(det);
-  }
-
-  function buildEditor(d){
-    editorBox.replaceChildren();
-    indexBox.replaceChildren();
-    var data = Object.assign({}, d[part] || {});
-    function jump(id){ var el = document.getElementById(id); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); }
-    if (role === "student") {
-      var counters = {};
-      STUDENT.forEach(function(s){
-        var cnt = h("span", {class:"cnt"});
-        counters[s.id] = {el:cnt, s:s};
-        indexBox.append(h("button", {type:"button", onclick:function(){ jump("sec_" + s.id); }}, h("span", {text:(s.n ? s.n + ". " : "") + s.title.split(" ").slice(0,3).join(" ")}), cnt));
-        editorBox.append(sectionEl(s, data, function(k, v){ data[k] = v; saver.queue(part, k, v); }, false, refreshCounts));
-      });
-      function refreshCounts(){
-        Object.keys(counters).forEach(function(id){
-          var c = counters[id], tot = c.s.fields.length, n = c.s.fields.filter(function(f){ return isFilled(data[f.k]); }).length;
-          c.el.textContent = n + "/" + tot; c.el.className = "cnt" + (n === tot ? " done" : "");
-        });
-      }
-      refreshCounts();
-    } else {
-      var items = RATED.map(function(g){
-        return {id:"adv_" + g.id, label:g.n + ". " + g.title.split(" ").slice(0,3).join(" "), g:g};
-      });
-      items.forEach(function(it){
-        var g = it.g;
-        indexBox.append(h("button", {type:"button", onclick:function(){ jump(it.id); }}, h("span", {text:it.label})));
-        var sec = h("section", {class:"sec", id:it.id}, h("div", {class:"num", text:g.n}),
-          h("div", null,
-            h("h2", {text:g.title}),
-            h("p", {class:"blurb", text:"Rate from 1 (developing skill) to 4 (independent researcher). A mean of 3–4 is Target, 2 is Acceptable and 1 is Needs improvement."}),
-            h("div", {class:"fields"},
-              h("div", {class:"field"}, h("span", {class:"lbl", text:"Your rating"}),
-                ratingEl(data["r" + g.n], function(v){ data["r" + g.n] = v; saver.queue(part, "r" + g.n, v); }, false)),
-              fieldEl({k:"c" + g.n, type:"long", label:"Comments", hint:"Briefly note the evidence behind the rating."}, data["c" + g.n],
-                function(v){ data["c" + g.n] = v; saver.queue(part, "c" + g.n, v); }, false))));
-        editorBox.append(sec);
-      });
-      indexBox.append(h("button", {type:"button", onclick:function(){ jump("adv_g4"); }}, h("span", {text:"4. Teaching"})));
-      editorBox.append(h("section", {class:"sec", id:"adv_g4"}, h("div", {class:"num", text:4}),
-        h("div", null, h("h2", {text:"Teaching"}),
-          h("p", {class:"blurb", text:"Optional. The program director scores teaching from course evaluations, so no rating is needed here."}),
-          h("div", {class:"fields"}, fieldEl({k:"c4", type:"long", label:"Comments on teaching"}, data.c4, function(v){ data.c4 = v; saver.queue(part, "c4", v); }, false)))));
-      indexBox.append(h("button", {type:"button", onclick:function(){ jump("adv_all"); }}, h("span", {text:"Overall"})));
-      editorBox.append(h("section", {class:"sec", id:"adv_all"}, h("div", {class:"num", text:""}),
-        h("div", null, h("h2", {text:"Overall"}),
-          h("div", {class:"fields", style:"margin-top:14px"},
-            fieldEl({k:"c_overall", type:"long", label:"Overall assessment and recommended next steps"}, data.c_overall, function(v){ data.c_overall = v; saver.queue(part, "c_overall", v); }, false),
-            (function(){
-              var f = h("div", {class:"field"}, h("label", {for:"f_met", text:"Have you discussed this review with the student?"}));
-              f.append(h("select", {class:"inp", id:"f_met", style:"max-width:240px", disabled:!canWrite,
-                onchange:function(e){ data.met = e.target.value; saver.queue(part, "met", e.target.value); }},
-                ["", "Yes", "Not yet"].map(function(o){ return h("option", {value:o, text:o || "Choose…", selected:(data.met || "") === o}); })));
-              return f;
-            })()))));
-    }
-  }
-
-  var back = fromDirector
-    ? h("button", {class:"btn link", type:"button", text:"← Roster", onclick:function(){ goDirector(); }})
-    : h("button", {class:"btn link", type:"button", text:"← Use a different code", onclick:function(){ goEntry(); }});
-
-  var head = h("div", {class:"rec-head"},
-    h("div", {class:"grow"},
-      h("div", null, back),
-      h("h1", {text:doc.name || "Student"}),
-      headMeta),
-    h("div", null,
-      h("div", {style:"display:flex;gap:8px;align-items:center;justify-content:flex-end"},
-        h("span", {class:"pill", "data-s":"prog", text:role === "student" ? "Student section" : "Advisor section"}),
-        h("span", {class:"chip", text:code})),
-      saveEl));
-
-  var page = h("div", null, head,
-    !canWrite ? h("div", {class:"notice", text:"This page is read-only for you. Ask the program director to share it with contributor access."}) : null,
-    h("div", {class:"layout"}, indexBox, h("div", null, roBox, editorBox, submitBar)));
-  show(page);
-  document.getElementById("whoLabel").textContent = (role === "student" ? "Student" : "Advisor") + " view";
-
-  function apply(d){
-    doc = d;
-    paintHead(d); paintSubmit(d);
-    if (!built) { built = true; paintRO(d); buildEditor(d); }
-    else paintRO(d);
-  }
-  apply(doc);
-  var unsub = ref.onSnapshot(function(snap){ if (snap.exists) apply(snap.data()); }, function(){});
-  cleanups.push(unsub);
-  return true;
+var main = document.getElementById("main");
+function show(el){ main.replaceChildren(el); window.scrollTo(0,0); }
+function ls(k, v){
+  try {
+    if (v === undefined) return localStorage.getItem(k);
+    if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+  } catch(_) { return null; }
 }
-
-/* ---------- entry ---------- */
-function lsGet(k){ try { return localStorage.getItem(k) || ""; } catch(_) { return ""; } }
-function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(_) {} }
 function lastWord(n){ var p = String(n || "").trim().split(/\s+/); return p[p.length - 1] || ""; }
+function bySort(a, b){ return a.sortName.localeCompare(b.sortName); }
 
 function goEntry(){
-  clearViews();
-  document.getElementById("whoLabel").textContent = "";
-  var docs = [];
-  var mode = lsGet("bbc_mode") === "advisor" ? "advisor" : "student";
-  var selStudent = lsGet("bbc_student"), selAdvisor = lsGet("bbc_advisor");
-  var err = h("div", {class:"err", role:"alert"});
+  var mode = ls("bbc26:mode") === "advisor" ? "advisor" : "student";
+  var selStudent = ls("bbc26:student") || "", selAdvisor = ls("bbc26:advisor") || "";
   var panel = h("div", {style:"margin-top:16px"});
   var segBtns = {};
   var seg = h("div", {class:"seg", role:"tablist"});
   [["student","I'm a student"],["advisor","I'm an advisor"]].forEach(function(p){
-    segBtns[p[0]] = h("button", {type:"button", class:"segbtn", role:"tab", text:p[1], onclick:function(){ mode = p[0]; lsSet("bbc_mode", mode); err.textContent = ""; paint(); }});
+    segBtns[p[0]] = h("button", {type:"button", class:"segbtn", role:"tab", text:p[1], onclick:function(){ mode = p[0]; ls("bbc26:mode", mode); paint(); }});
     seg.append(segBtns[p[0]]);
   });
-
-  async function open(id, role){
-    err.textContent = "";
-    try {
-      var ok = await openRecord(id, role, false);
-      if (!ok) err.textContent = "That record was not found. Ask the program director.";
-    } catch(e) { err.textContent = "Could not open the form right now. Try again in a moment."; }
-  }
-
+  function submittedMark(role, id){ return ls("bbc26:" + role + ":" + id + ":submitted") ? "done" : (ls("bbc26:" + role + ":" + id) ? "prog" : "none"); }
+  var LBL = {done:"Submitted from this device", prog:"Draft saved", none:"Not started"};
   function paint(){
     Object.keys(segBtns).forEach(function(k){ segBtns[k].setAttribute("aria-selected", String(k === mode)); });
     panel.replaceChildren();
-    if (!docs.length) {
-      panel.append(h("p", {style:"color:var(--muted)", text:"The roster has not been set up yet. Contact the program director."}));
-      return;
-    }
     if (mode === "student") {
-      var sorted = docs.slice().sort(function(a, b){ return String(a.sortName || a.name).localeCompare(String(b.sortName || b.name)); });
-      if (!sorted.some(function(d){ return d.id === selStudent; })) selStudent = "";
-      var btn = h("button", {class:"btn primary", type:"button", text:"Open my report", disabled:!selStudent, onclick:function(){ open(selStudent, "student"); }});
-      var sel = h("select", {class:"inp big", id:"studentSel", "aria-label":"Your name",
-        onchange:function(e){ selStudent = e.target.value; lsSet("bbc_student", selStudent); btn.disabled = !selStudent; }},
-        [h("option", {value:"", text:"Choose your name…"})].concat(sorted.map(function(d){
-          return h("option", {value:d.id, text:d.sortName || d.name, selected:d.id === selStudent}); })));
+      var sorted = ROSTER.slice().sort(bySort);
+      var btn = h("button", {class:"btn primary", type:"button", text:"Open my report", disabled:!selStudent, onclick:function(){ openForm("student", ROSTER.filter(function(r){ return r.id === selStudent; })[0]); }});
+      var sel = h("select", {class:"inp big", id:"studentSel", "aria-label":"Your name", onchange:function(e){ selStudent = e.target.value; ls("bbc26:student", selStudent); btn.disabled = !selStudent; }},
+        [h("option", {value:"", text:"Choose your name…"})].concat(sorted.map(function(d){ return h("option", {value:d.id, text:d.sortName, selected:d.id === selStudent}); })));
       panel.append(sel, h("div", {style:"margin-top:12px"}, btn));
     } else {
-      var names = Array.from(new Set(docs.map(function(d){ return d.advisor; }).filter(Boolean)))
-        .sort(function(a, b){ return lastWord(a).localeCompare(lastWord(b)); });
-      if (names.indexOf(selAdvisor) < 0) selAdvisor = "";
+      var names = Array.from(new Set(ROSTER.map(function(d){ return d.advisor; }))).sort(function(a, b){ return lastWord(a).localeCompare(lastWord(b)); });
       var list = h("div", {style:"margin-top:14px"});
       function paintList(){
         list.replaceChildren();
         if (!selAdvisor) return;
-        var mine = docs.filter(function(d){ return d.advisor === selAdvisor; }).sort(function(a, b){ return String(a.sortName || a.name).localeCompare(String(b.sortName || b.name)); });
-        list.append(h("div", {class:"hint", style:"color:var(--muted);font-size:13px;margin-bottom:2px", text:"Your students (" + mine.length + ")"}));
+        var mine = ROSTER.filter(function(d){ return d.advisor === selAdvisor; }).sort(bySort);
+        list.append(h("div", {style:"color:var(--muted);font-size:13px;margin-bottom:2px", text:"Your students (" + mine.length + ")"}));
         mine.forEach(function(d){
-          var ss = studentStatus(d, "student", "studentAt"), as = studentStatus(d, "advisorPart", "advisorAt");
-          list.append(h("div", {class:"advrow"},
-            h("span", {class:"nm", text:d.name}),
-            h("span", {class:"pill", "data-s":ss, text:"Student: " + PILL[ss].toLowerCase()}),
-            h("span", {class:"pill", "data-s":as, text:"You: " + PILL[as].toLowerCase()}),
-            h("button", {class:"btn sm primary", type:"button", text:"Open", onclick:function(){ open(d.id, "advisor"); }})));
+          var s = submittedMark("advisor", d.id);
+          list.append(h("div", {class:"advrow"}, h("span", {class:"nm", text:d.name}),
+            h("span", {class:"pill", "data-s":s, text:LBL[s]}),
+            h("button", {class:"btn sm primary", type:"button", text:"Review", onclick:function(){ openForm("advisor", d); }})));
         });
       }
-      var asel = h("select", {class:"inp big", id:"advisorSel", "aria-label":"Your name",
-        onchange:function(e){ selAdvisor = e.target.value; lsSet("bbc_advisor", selAdvisor); paintList(); }},
+      var asel = h("select", {class:"inp big", id:"advisorSel", "aria-label":"Your name", onchange:function(e){ selAdvisor = e.target.value; ls("bbc26:advisor", selAdvisor); paintList(); }},
         [h("option", {value:"", text:"Choose your name…"})].concat(names.map(function(n){ return h("option", {value:n, text:n, selected:n === selAdvisor}); })));
       panel.append(asel, list);
       paintList();
     }
-    /* access-code fallback */
-    var codeIn = h("input", {class:"inp", id:"codeIn", type:"text", placeholder:"XXXX-XXXX", autocomplete:"off", spellcheck:false, maxLength:12, "aria-label":"Access code", style:"font-family:var(--f-mono);letter-spacing:.1em;text-transform:uppercase;max-width:180px"});
-    function byCode(role){ var c = normCode(codeIn.value); if (c.length !== 9) { err.textContent = "Codes look like K7Q2-M9XD."; return; } open(c, role); }
-    panel.append(h("details", {class:"codebox2"}, h("summary", {text:"Use an access code instead"}),
-      h("div", {style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"}, codeIn,
-        h("button", {class:"btn", type:"button", text:"As student", onclick:function(){ byCode("student"); }}),
-        h("button", {class:"btn", type:"button", text:"As advisor", onclick:function(){ byCode("advisor"); }}))));
   }
-
-  var view = h("div", {class:"entry"},
+  show(h("div", {class:"entry"},
     h("h1", {text:"Annual report for BBC doctoral students"}),
-    h("p", {text:"Choose your name to begin. Students fill in their section first. Advisors then choose their own name to read their students’ responses and add ratings."}),
-    seg, panel, err,
-    isDirector ? h("div", {class:"dirlink"}, h("span", {text:"You are signed in as a director."}), h("button", {class:"btn", type:"button", text:"Open director dashboard", onclick:goDirector})) : null);
-  show(view);
+    h("p", {text:"Choose your name to begin. Students fill in their section. Advisors choose their own name, then review each of their students. Your answers are saved on this device as you type and are sent only when you submit."}),
+    seg, panel));
   paint();
-  var unsub = db.collection("students").onSnapshot(function(snap){
-    docs = snap.docs.map(function(s){ return Object.assign({id:s.id}, s.data()); });
-    paint();
-  }, function(){ err.textContent = "Could not load the roster. Reload the page."; });
-  cleanups.push(unsub);
 }
 
-/* ---------- director ---------- */
-function mean(a){ return a.length ? a.reduce(function(x,y){ return x + y; }, 0) / a.length : null; }
-function nums(a){ return a.filter(function(x){ return typeof x === "number" && !isNaN(x); }); }
-function pct(n, d){ return d ? Math.round(100 * n / d) : 0; }
-function studentStatus(d, part, key){
-  if ((d.status || {})[key]) return "done";
-  return hasContent(d[part]) ? "prog" : "none";
-}
-var PILL = {done:"Submitted", prog:"In progress", none:"Not started"};
-function studentMean(d){ var a = nums([1,2,3].map(function(i){ return (d.advisorPart || {})["r" + i]; })); return mean(a); }
-function f1(x){ return x == null ? "—" : (Math.round(x * 10) / 10).toFixed(1); }
-
-function goalNarrative(docs, g){
-  var rs = nums(docs.map(function(d){ return (d.advisorPart || {})["r" + g.n]; }));
-  var lead = "Goal #" + g.n + ". " + g.title + ": ";
-  if (!rs.length) return lead + "No faculty ratings have been entered yet.";
-  var t = rs.filter(function(r){ return r >= 3; }).length;
-  var a = rs.filter(function(r){ return r >= 2 && r < 3; }).length;
-  var n = rs.filter(function(r){ return r < 2; }).length;
-  var noun = g.n === 1 ? "Scholarship was" : "This goal was quantitatively";
-  return lead + noun + " assessed by faculty mentors on a scale from 1 (developing skill) – 4 (independent researcher). Scores were then used by the program director to place them into one of the following categories based on scores: Target (overall mean rating 3-4), Acceptable (overall mean rating 2), and Needs improvement (overall mean rating 1). BBC trainees scored, on average, a " +
-    f1(mean(rs)) + " on this measure (n = " + rs.length + " of " + docs.length + " students). " +
-    pct(t, rs.length) + "% of BBC students were on Target, " + pct(a, rs.length) + "% were Acceptable, and " + pct(n, rs.length) + "% Needed Improvement.";
-}
-function tfNarrative(docs){
-  var y = parseInt((cycle.start || "").slice(0,4), 10) || new Date().getFullYear();
-  var yy = function(v){ return String(v).slice(-2); };
-  function band(vals){
-    return {n:vals.length,
-      t:vals.filter(function(v){ return v >= 4; }).length,
-      a:vals.filter(function(v){ return v >= 3 && v < 4; }).length,
-      i:vals.filter(function(v){ return v >= 2 && v < 3; }).length,
-      u:vals.filter(function(v){ return v < 2; }).length};
+function openForm(role, rec){
+  var key = "bbc26:" + role + ":" + rec.id;
+  var data = {};
+  try { data = JSON.parse(ls(key) || "{}") || {}; } catch(_) { data = {}; }
+  var saveEl = h("div", {class:"save"}), timer = null;
+  function set(k, v){
+    data[k] = v;
+    clearTimeout(timer);
+    timer = setTimeout(function(){ ls(key, JSON.stringify(data)); saveEl.textContent = "Draft saved on this device " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); }, 400);
   }
-  var fall = band(nums(docs.map(function(d){ var v = parseFloat((d.director || {}).tfFall); return isNaN(v) ? null : v; })));
-  var spr = band(nums(docs.map(function(d){ var v = parseFloat((d.director || {}).tfSpring); return isNaN(v) ? null : v; })));
-  var lead = "Goal #4. Demonstrate Teaching Abilities: ";
-  if (!fall.n && !spr.n) return lead + "No teaching evaluation scores have been entered yet. Enter each teaching fellow's mean course-evaluation rating in the roster above.";
-  function sentence(label, b){
-    return "In the " + label + ", " + b.t + " TF" + (b.t === 1 ? "" : "s") + "' ratings were in the Target range (overall mean rating 4-5), " +
-      b.a + " in the Acceptable range (3-4), " + b.i + " in the Needs improvement range (2-3) and " + b.u + " in the Unacceptable range (below 2).";
-  }
-  return lead + "The performance of BBC students who were teaching fellows during AY " + yy(y) + "/" + yy(y + 1) +
-    " was assessed using criteria obtained from course evaluations on the question \"How much did you learn from this course?\" The rubric designed to evaluate their performance was then used by the program director to place them into one of the following categories based on the overall mean rating of their discussion sections: Target (overall mean rating 4-5), Acceptable (overall mean rating 3-4), Needs improvement (overall mean rating 2-3) and Unacceptable (overall mean rating below 2). " +
-    "There were " + fall.n + " students who were TFs evaluated in the Fall of " + yy(y) + " and " + spr.n + " students who were TFs evaluated in the Spring of " + yy(y + 1) + ". " +
-    sentence("fall", fall) + " " + sentence("spring", spr);
-}
-
-function csvEsc(v){ var s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
-function listText(arr){ return (arr || []).filter(function(r){ return isFilled([r]); }).map(function(r){ return [r.term, r.cite, r.status].filter(Boolean).join(" / "); }).join("; "); }
-function buildCsv(docs){
-  var cols = ["Code","Student","Advisor","Year","Student submitted","Advisor submitted",
-    "Rating G1","Rating G2","Rating G3","Mean rating","Comment G1","Comment G2","Comment G3","Comment teaching","Overall comment","Discussed with student",
-    "TF eval Fall","TF eval Spring",
-    "G1 stage","G1 summary","Publications","Talks and posters","Funding and awards","G2 summary","Ethics training","Service and mentoring","Courses taught","Teaching reflection","Goals next cycle","Support needed"];
-  var rows = [cols];
-  docs.forEach(function(d){
-    var s = d.student || {}, a = d.advisorPart || {}, st = d.status || {}, dr = d.director || {};
-    rows.push([d.id, d.name, d.advisor, d.year, st.studentAt, st.advisorAt,
-      a.r1, a.r2, a.r3, studentMean(d) == null ? "" : f1(studentMean(d)), a.c1, a.c2, a.c3, a.c4, a.c_overall, a.met,
-      dr.tfFall, dr.tfSpring,
-      s.g1_stage, s.g1_summary, listText(s.g2_pubs), listText(s.g2_talks), s.g2_funding, s.g2_summary, s.g3_ethics, s.g3_service, listText(s.g4_courses), s.g4_reflection, s.plan_goals, s.plan_support]);
-  });
-  return rows.map(function(r){ return r.map(csvEsc).join(","); }).join("\n");
-}
-
-function goDirector(){
-  clearViews();
-  document.getElementById("whoLabel").textContent = "Director";
-  var docs = [];
-  var confirmDel = null;
-  var rosterHost = h("div");
-  var narrHost = h("div");
-  var addMsg = h("div", {class:"hint", style:"color:var(--muted);font-size:13px;margin-top:6px"});
-
-  /* cycle */
-  var startIn = h("input", {class:"inp", id:"cycStart", type:"date", value:cycle.start, style:"width:auto"});
-  var endIn = h("input", {class:"inp", id:"cycEnd", type:"date", value:cycle.end, style:"width:auto"});
-  async function saveCycle(){
-    if (!startIn.value || !endIn.value) return;
-    try { await db.doc("config/cycle").set({start:startIn.value, end:endIn.value}); toast("Cycle saved"); } catch(_) { toast("Could not save the cycle"); }
-  }
-  startIn.addEventListener("change", saveCycle); endIn.addEventListener("change", saveCycle);
-
-  /* add students */
-  var bulk = h("textarea", {class:"inp", id:"bulkIn", rows:4, placeholder:"Jordan Rivera, Dr. Alex Chen, 3rd year\nPriya Nair, Dr. Sam Okafor, 1st year", style:"min-height:96px;max-width:none"});
-  var addBtn = h("button", {class:"btn primary", type:"button", text:"Create codes", onclick:async function(){
-    var lines = bulk.value.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
-    if (!lines.length) { addMsg.textContent = "Add at least one student."; return; }
-    addBtn.disabled = true; var made = 0;
-    try {
-      for (var i = 0; i < lines.length; i++) {
-        var p = lines[i].split(",").map(function(x){ return x.trim(); });
-        var code = newCode();
-        await db.doc("students/" + code).set({name:p[0], advisor:p[1] || "", year:p[2] || "", createdAt:new Date().toISOString(),
-          student:{}, advisorPart:{}, director:{}, status:{studentAt:"", advisorAt:""}});
-        made++;
-      }
-      bulk.value = ""; addMsg.textContent = made + " code" + (made === 1 ? "" : "s") + " created.";
-    } catch(e) { addMsg.textContent = "Stopped after " + made + ". Check your access and try again."; }
-    addBtn.disabled = false;
-  }});
-
-  function paintRoster(){
-    var sorted = docs.slice().sort(function(a, b){ return String(a.name).localeCompare(String(b.name)); });
-    if (!sorted.length) {
-      rosterHost.replaceChildren(h("div", {class:"empty-state", text:"No students yet. Paste names above to create their codes."}));
-      return;
-    }
-    var thead = h("tr", null, ["Student","Advisor","Year","Code","Student part","Advisor part","Mean","TF Fall","TF Spring",""].map(function(t){ return h("th", {text:t}); }));
-    var body = sorted.map(function(d){
-      var ss = studentStatus(d, "student", "studentAt"), as = studentStatus(d, "advisorPart", "advisorAt");
-      var m = studentMean(d);
-      function tf(key){
-        return h("input", {class:"inp", type:"number", min:1, max:5, step:0.1, value:(d.director || {})[key] || "", "aria-label":key,
-          onchange:async function(e){ try { await db.doc("students/" + d.id).update({director:{[key]:e.target.value}}); } catch(_) { toast("Could not save"); } }});
-      }
-      return h("tr", null,
-        h("td", {text:d.name}), h("td", {text:d.advisor}), h("td", {text:d.year}),
-        h("td", {class:"code"}, d.id, " ", h("button", {class:"btn sm", type:"button", text:"Copy", onclick:function(){ copy(d.id, "Code copied"); }})),
-        h("td", null, h("span", {class:"pill", "data-s":ss, text:PILL[ss]})),
-        h("td", null, h("span", {class:"pill", "data-s":as, text:PILL[as]})),
-        h("td", {text:f1(m)}),
-        h("td", null, tf("tfFall")), h("td", null, tf("tfSpring")),
-        h("td", null, h("div", {class:"acts"},
-          h("button", {class:"btn sm", type:"button", text:"Student", onclick:function(){ openRecord(d.id, "student", true); }}),
-          h("button", {class:"btn sm", type:"button", text:"Advisor", onclick:function(){ openRecord(d.id, "advisor", true); }}),
-          confirmDel === d.id
-            ? h("button", {class:"btn sm primary", type:"button", text:"Confirm delete", onclick:async function(){ confirmDel = null; try { await db.doc("students/" + d.id).delete(); } catch(_) { toast("Could not delete"); } }})
-            : h("button", {class:"btn sm", type:"button", text:"Delete", onclick:function(){ confirmDel = d.id; paintRoster(); setTimeout(function(){ if (confirmDel === d.id) { confirmDel = null; paintRoster(); } }, 4000); }}))));
+  var body = h("div");
+  if (role === "student") {
+    STUDENT.forEach(function(s){ body.append(sectionEl(s, data, set, false)); });
+  } else {
+    RATED.forEach(function(g){
+      body.append(h("section", {class:"sec"}, h("div", {class:"num", text:g.n}),
+        h("div", null, h("h2", {text:g.title}),
+          h("p", {class:"blurb", text:"Rate from 1 (developing skill) to 4 (independent researcher). A mean of 3–4 is Target, 2 is Acceptable and 1 is Needs improvement."}),
+          h("div", {class:"fields"},
+            h("div", {class:"field"}, h("span", {class:"lbl", text:"Your rating"}), ratingEl(data["r" + g.n], function(v){ set("r" + g.n, v); }, false)),
+            fieldEl({k:"c" + g.n, type:"long", label:"Comments", hint:"Briefly note the evidence behind the rating."}, data["c" + g.n], function(v){ set("c" + g.n, v); }, false)))));
     });
-    var sDone = sorted.filter(function(d){ return (d.status || {}).studentAt; }).length;
-    var aDone = sorted.filter(function(d){ return (d.status || {}).advisorAt; }).length;
-    rosterHost.replaceChildren(
-      h("p", {class:"sub", text:sorted.length + " students · " + sDone + " student parts and " + aDone + " advisor parts submitted"}),
-      h("div", {class:"tablewrap"}, h("table", null, h("thead", null, thead), h("tbody", null, body))));
+    body.append(h("section", {class:"sec"}, h("div", {class:"num", text:4}),
+      h("div", null, h("h2", {text:"Teaching"}),
+        h("p", {class:"blurb", text:"Optional. The program director scores teaching from course evaluations, so no rating is needed here."}),
+        h("div", {class:"fields"}, fieldEl({k:"c4", type:"long", label:"Comments on teaching"}, data.c4, function(v){ set("c4", v); }, false)))));
+    var met = h("select", {class:"inp", id:"f_met", style:"max-width:240px", onchange:function(e){ set("met", e.target.value); }},
+      ["", "Yes", "Not yet"].map(function(o){ return h("option", {value:o, text:o || "Choose…", selected:(data.met || "") === o}); }));
+    body.append(h("section", {class:"sec"}, h("div", {class:"num", text:""}),
+      h("div", null, h("h2", {text:"Overall"}), h("div", {class:"fields", style:"margin-top:14px"},
+        fieldEl({k:"c_overall", type:"long", label:"Overall assessment and recommended next steps"}, data.c_overall, function(v){ set("c_overall", v); }, false),
+        h("div", {class:"field"}, h("label", {for:"f_met", text:"Have you discussed this review with the student?"}), met)))));
   }
 
-  function paintNarr(){
-    var blocks = RATED.map(function(g){ return {title:"Goal " + g.n + " · " + g.title, text:goalNarrative(docs, g)}; });
-    blocks.push({title:"Goal 4 · Teaching", text:tfNarrative(docs)});
-    var all = blocks.map(function(b){ return b.text; }).join("\n\n");
-    narrHost.replaceChildren(
-      blocks.map(function(b){
-        return h("div", {class:"narr"}, h("div", {class:"top"}, h("h3", {text:b.title}),
-          h("button", {class:"btn sm", type:"button", text:"Copy", onclick:function(){ copy(b.text, "Copied"); }})), h("p", {text:b.text}));
-      }),
-      h("div", {style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"},
-        h("button", {class:"btn primary", type:"button", text:"Copy all four", onclick:function(){ copy(all, "Copied all four"); }}),
-        h("button", {class:"btn", type:"button", text:"Download all responses (CSV)", onclick:async function(){
-          if (!dl) { toast("Downloads are not available here"); return; }
-          try { await dl.save({filename:"BBC-annual-report-responses.csv", data:buildCsv(docs.slice().sort(function(a, b){ return String(a.name).localeCompare(String(b.name)); }))}); }
-          catch(e) { if (!e || e.code !== "declined") toast("Could not download"); }
-        }})));
+  /* submit */
+  var emailIn = h("input", {class:"inp", id:"email", type:"email", autocomplete:"email", placeholder:"you@bu.edu", value:ls("bbc26:email:" + role) || "", style:"max-width:360px"});
+  var msg = h("div", {class:"msg", role:"status"});
+  var btn = h("button", {class:"btn primary", type:"button", onclick:submit});
+  var label = role === "student" ? "Submit my report" : "Submit review";
+  btn.textContent = label;
+  function note(text, cls){ msg.className = "msg " + (cls || ""); msg.textContent = text; }
+  var prev = ls(key + ":submitted");
+  if (prev) note("Last submitted " + new Date(prev).toLocaleString() + ". You can edit and submit again; the latest submission is used.", "ok");
+
+  async function submit(){
+    var email = emailIn.value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { note("Enter your email address to submit.", "bad"); emailIn.focus(); return; }
+    if (role === "advisor" && !RATED.some(function(g){ return typeof data["r" + g.n] === "number"; })) { note("Add at least one rating before submitting.", "bad"); return; }
+    if (role === "student" && !Object.keys(data).some(function(k){ return isFilled(data[k]); })) { note("Answer at least one question before submitting.", "bad"); return; }
+    if (!ENDPOINT) { note("This form is not connected to its response sheet yet. Your draft is saved on this device.", "bad"); return; }
+    clearTimeout(timer); ls(key, JSON.stringify(data)); ls("bbc26:email:" + role, email);
+    btn.disabled = true; btn.textContent = "Submitting…"; note("");
+    try {
+      var res = await fetch(ENDPOINT, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({role:role, studentId:rec.id, email:email, cycle:CYCLE, answers:data})});
+      var j = await res.json();
+      if (j && j.ok) { ls(key + ":submitted", new Date().toISOString()); note("Submitted " + new Date().toLocaleString() + ". Thank you. You can edit and submit again; the latest submission is used.", "ok"); }
+      else note((j && j.error) || "The submission was not accepted.", "bad");
+    } catch(e) { note("Could not reach the server. Your draft is saved on this device. Try again in a minute.", "bad"); }
+    btn.disabled = false; btn.textContent = label;
   }
 
-  var view = h("div", {class:"dir"},
-    h("h1", {text:"Director dashboard"}),
-    h("div", {class:"hint", style:"color:var(--muted)"}, h("button", {class:"btn link", type:"button", text:"← Back to code entry", onclick:goEntry})),
-    h("div", {class:"twocol"},
-      h("div", {class:"panel"}, h("h2", {text:"Assessment cycle"}), h("p", {class:"sub", text:"Shown on every form and used for academic-year labels in the compiled text."}),
-        h("div", {class:"dates"}, h("label", {for:"cycStart"}, "Start", startIn), h("label", {for:"cycEnd"}, "End", endIn))),
-      h("div", {class:"panel"}, h("h2", {text:"Add students"}), h("p", {class:"sub", text:"One per line: name, advisor, year. Each student gets one code, shared with their advisor."}),
-        bulk, h("div", {style:"margin-top:8px"}, addBtn), addMsg)),
-    h("div", {class:"panel"}, h("h2", {text:"Roster"}), rosterHost),
-    h("div", {class:"panel"}, h("h2", {text:"Compiled results"}), h("p", {class:"sub", text:"Draft text for “What were the results and key findings of evidence assessed?” Numbers update as advisors enter ratings and as you enter teaching scores above."}), narrHost));
-  show(view);
-  paintRoster(); paintNarr();
-
-  var unsub = db.collection("students").onSnapshot(function(snap){
-    docs = snap.docs.map(function(s){ return Object.assign({id:s.id}, s.data()); });
-    paintRoster(); paintNarr();
-  }, function(){});
-  cleanups.push(unsub);
+  var back = h("button", {class:"btn link", type:"button", text:"← Back", onclick:goEntry});
+  show(h("div", {style:"max-width:760px"},
+    h("div", {class:"rec-head"}, h("div", {class:"grow"}, h("div", null, back),
+      h("h1", {text:role === "student" ? rec.name : "Review: " + rec.name}),
+      h("div", {class:"meta", text:"Advisor: " + rec.advisor + " · Cycle " + CYCLE}), saveEl)),
+    body,
+    h("section", {class:"sec", style:"grid-template-columns:minmax(0,1fr)"},
+      h("div", null, h("h2", {text:"Submit"}),
+        h("p", {class:"blurb", text:"Enter the BU email address the program has on file for you. Submissions from other addresses are rejected."}),
+        h("div", {class:"field"}, h("label", {for:"email", text:"Your email address"}), emailIn),
+        h("div", {style:"margin-top:14px"}, btn), msg))));
 }
 
-/* ---------- boot ---------- */
-function paintCycle(){
-  document.getElementById("cycleLabel").textContent = "PhD Program in Psychology · Brain, Behavior & Cognition · Cycle " + fmtDate(cycle.start) + " – " + fmtDate(cycle.end);
-}
-paintCycle();
-show(h("div", {class:"entry"}, h("h1", {text:"Annual report for BBC doctoral students"}), h("p", {text:"Loading…"})));
+goEntry();
+})();
 
-(async function(){
-  try { db = await claude.use("db"); userCap = await claude.use("user"); dl = await claude.use("downloads"); } catch(_) { db = null; }
-  if (!db) {
-    show(h("div", {class:"entry"}, h("h1", {text:"Sign in to continue"}),
-      h("p", {text:"This form stores answers for each student, so you need to be signed in to Claude to open it. Sign in, then reload this page."})));
-    return;
-  }
-  try { isDirector = userCap ? await userCap.canEdit() : false; } catch(_) { isDirector = false; }
-  try { var cw = userCap ? await userCap.can("data.write") : null; canWrite = cw !== false; } catch(_) {}
-  try {
-    var c = await db.doc("config/cycle").get();
-    if (c.exists) { cycle = Object.assign(cycle, c.data()); paintCycle(); }
-    var u = db.doc("config/cycle").onSnapshot(function(s){ if (s.exists) { cycle = Object.assign(cycle, s.data()); paintCycle(); } }, function(){});
-  } catch(_) {}
-  goEntry();
-})();
-})();
-</script>
+</script></body></html>
